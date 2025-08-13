@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pumps Graphs • Ranhill IIoT 3D</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:rgba(3,8,23,.86); --text:#e5e7eb; --muted:#94a3b8;
+      --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --accent:#93c5fd; --ring:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      color:var(--text);
+    }
+    /* Topbar */
+    #topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+      gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);border-bottom:1px solid rgba(148,163,184,.18)}
+    #brand{font-weight:800;letter-spacing:.3px}
+    .actions{display:flex;gap:8px;align-items:center}
+    .btn{border:0;padding:8px 12px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+    #liveBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:transparent;border:1px solid rgba(148,163,184,.35);color:#cbd5e1}
+    #liveBadge.ok{color:var(--ok);border-color:var(--ok)}
+    #liveBadge.bad{color:var(--bad);border-color:var(--bad)}
+
+    /* Toolbar/Filters */
+    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;align-items:center}
+    select,input[type="search"]{background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
+      border-radius:10px;padding:8px 10px}
+    .pill{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.3);background:#0f172a}
+
+    /* Layout */
+    #wrap{padding:8px 16px 20px}
+    #charts{display:grid;gap:12px;grid-template-rows: 320px 320px}
+    .card{background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:12px 12px 8px;box-shadow:0 10px 30px rgba(0,0,0,.32)}
+
+    /* Pump list */
+    #listWrap{margin-top:12px;display:grid;grid-template-columns: 1fr;gap:10px}
+    #pList{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;max-height:240px;overflow:auto;padding:8px;background:rgba(15,23,42,.6);border:1px solid rgba(148,163,184,.18);border-radius:12px}
+    .pitem{display:flex;align-items:center;gap:6px;background:#0c172a;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:6px 8px}
+    .legendDot{width:10px;height:10px;border-radius:50%}
+
+    .muted{color:var(--muted); font-size:12px}
+    footer{padding:12px 16px 20px;color:#9aa3b2;font-size:12px}
+  </style>
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+</head>
+<body>
+  <script>
+  // Session guard
+  (function(){
+    try{
+      const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
+      if(!s || !s.exp || Date.now() > s.exp){
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        location.replace('./login.html?next=' + next);
+      }
+    }catch(e){
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.replace('./login.html?next=' + next);
+    }
+  })();
+  </script>
+
+  <div id="topbar">
+    <div id="brand">RANHILL • Pumps Graphs</div>
+    <div class="actions">
+      <span id="liveBadge">LIVE: idle</span>
+      <button class="btn" id="btnBack3D" title="Back to 3D">Back to 3D</button>
+      <button class="btn" id="btnGauges" title="Go to Gauges">Gauges</button>
+      <button class="btn" id="btnLogout">Logout</button>
+    </div>
+  </div>
+
+  <div id="filters">
+    <select id="fFloor">
+      <option value="">ทุกชั้น</option>
+      <option>F1</option>
+      <option>F2</option>
+    </select>
+    <select id="fRoom"><option value="">ทุกห้อง</option></select>
+    <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1" />
+
+    <span class="pill">หน้าต่างเวลา
+      <select id="fWindow">
+        <option value="300000">5 นาที</option>
+        <option value="900000" selected>15 นาที</option>
+        <option value="3600000">60 นาที</option>
+      </select>
+    </span>
+    <button class="btn" id="btnAddVisible">Add visible to chart</button>
+    <button class="btn" id="btnClearChart">Clear</button>
+    <button class="btn" id="btnPause">Pause</button>
+    <span class="muted" id="selHint">เลือกปั๊มจากรายการด้านล่างแล้วกด Add หรือพิมพ์ค้นหา</span>
+  </div>
+
+  <div id="wrap">
+    <div id="charts">
+      <div class="card"><canvas id="chartAmp"></canvas></div>
+      <div class="card"><canvas id="chartFlow"></canvas></div>
+    </div>
+
+    <div id="listWrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div class="muted">รายการปั๊ม (เลือกได้หลายตัว) — <span id="visCount">0</span> แสดงผล</div>
+        <div class="muted">ที่เลือกอยู่ในกราฟ: <span id="selCount">0</span></div>
+      </div>
+      <div id="pList"></div>
+    </div>
+  </div>
+
+  <footer>
+    <span class="muted">กราฟเส้นแบบเรียลไทม์ — อัปเดตจาก WebSocket เดียวกับหน้า 3D/Gauges • เก็บข้อมูลตามหน้าต่างเวลา • ใช้ Chart.js</span>
+  </footer>
+
+  <script type="module">
+    /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
+    async function resolveWS(){
+      const params = new URLSearchParams(location.search);
+      let url = params.get('ws') || localStorage.getItem('wsEndpoint');
+      if(!url){
+        try{ const cfg = await fetch('./config.json?v='+Date.now(), {cache:'no-store'}).then(r=>r.json()); url = cfg.ws; }
+        catch(e){ console.warn('No/Bad config.json', e); }
+      }
+      if(url && location.protocol==='https:' && url.startsWith('ws://')){ url = 'wss://' + url.slice(5); }
+      if(url) localStorage.setItem('wsEndpoint', url);
+      return url;
+    }
+
+    /* ---------- Build pump IDs (mirror 3D layout) ---------- */
+    const PLAN_ROOMS=[
+      [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
+      [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
+    ];
+    const FLOORS = [];
+    PLAN_ROOMS.forEach((rooms,idx)=>{
+      const floorId= idx===0? 'F1':'F2';
+      const floor={id:floorId, rooms:[]};
+      rooms.forEach((r,ri)=>{
+        const count=(r.w*r.d>260)?3:2;
+        const room={id:`R${ri+1}`, pumps:[]};
+        for(let i=0;i<count;i++) room.pumps.push(`${floorId}-R${ri+1}-P${i+1}`);
+        floor.rooms.push(room);
+      });
+      FLOORS.push(floor);
+    });
+    const PUMP_IDS = FLOORS.flatMap(f=> f.rooms.flatMap(r=> r.pumps));
+
+    /* ---------- Filters & pump list ---------- */
+    const fFloor = document.getElementById('fFloor');
+    const fRoom  = document.getElementById('fRoom');
+    const fText  = document.getElementById('fText');
+    const pList  = document.getElementById('pList');
+    const visCount = document.getElementById('visCount');
+    const selCount = document.getElementById('selCount');
+
+    function allRoomsOf(floorId){ const floor = FLOORS.find(f=>f.id===floorId); return floor ? floor.rooms.map(r=>r.id) : []; }
+    function rebuildRoomFilter(){
+      const v = fFloor.value;
+      const rooms = v ? allRoomsOf(v) : FLOORS.flatMap(f=>f.rooms.map(r=>r.id));
+      fRoom.innerHTML = '<option value="">ทุกห้อง</option>' + rooms.map(r=>`<option>${r}</option>`).join('');
+    }
+    fFloor.addEventListener('change', ()=>{ rebuildRoomFilter(); rebuildPumpList(); });
+    fRoom .addEventListener('change', rebuildPumpList);
+    fText .addEventListener('input', rebuildPumpList);
+    rebuildRoomFilter();
+
+    const selected = new Set(); // ids in chart
+
+    function hashColor(str){
+      let h=0; for(let i=0;i<str.length;i++){ h=(h*31 + str.charCodeAt(i))>>>0; }
+      const r = 100 + (h & 127), g = 100 + ((h>>7) & 127), b = 100 + ((h>>14) & 127);
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function currentVisibleIds(){
+      const q=(fText.value||'').trim().toLowerCase(); const ff=fFloor.value; const rr=fRoom.value;
+      return PUMP_IDS.filter(id=>{
+        if(q && !id.toLowerCase().includes(q)) return false;
+        if(ff && !id.startsWith(ff+'-')) return false;
+        if(rr && !id.includes('-'+rr+'-')) return false;
+        return true;
+      });
+    }
+
+    function rebuildPumpList(){
+      const ids=currentVisibleIds(); visCount.textContent=ids.length;
+      pList.innerHTML = ids.map(id=>{
+        const picked = selected.has(id);
+        return `<label class="pitem"><input type="checkbox" data-id="${id}" ${picked? 'checked':''}/> <span class="legendDot" style="background:${hashColor(id)}"></span> ${id}</label>`;
+      }).join('');
+      pList.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+        cb.addEventListener('change', e=>{
+          const id=e.target.getAttribute('data-id');
+          if(e.target.checked){ selected.add(id); ensureDatasetsFor(id); }
+          else { selected.delete(id); removeDatasetsFor(id); }
+          selCount.textContent = selected.size;
+          syncDatasets();
+        });
+      });
+      selCount.textContent = selected.size;
+    }
+    rebuildPumpList();
+
+    document.getElementById('btnAddVisible').addEventListener('click', ()=>{
+      const ids=currentVisibleIds(); ids.forEach(id=> selected.add(id));
+      rebuildPumpList(); syncDatasets();
+    });
+    document.getElementById('btnClearChart').addEventListener('click', ()=>{
+      selected.clear(); rebuildPumpList(); syncDatasets();
+    });
+
+    /* ---------- Charts ---------- */
+    const ctxA = document.getElementById('chartAmp').getContext('2d');
+    const ctxF = document.getElementById('chartFlow').getContext('2d');
+
+    const baseOptions = {
+      type: 'line',
+      options: {
+        responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
+        interaction:{ intersect:false, mode:'nearest' },
+        plugins:{ legend:{ labels:{ color:'#cbd5e1' } }, tooltip:{ enabled:true } },
+        scales:{
+          x:{ type:'time', ticks:{ color:'#cbd5e1' }, grid:{ color:'rgba(148,163,184,.18)' } },
+          y:{ ticks:{ color:'#cbd5e1' }, grid:{ color:'rgba(148,163,184,.18)' } }
+        }
+      },
+      data: { datasets: [] }
+    };
+
+    const chartAmp  = new Chart(ctxA, JSON.parse(JSON.stringify(baseOptions)));
+    const chartFlow = new Chart(ctxF, JSON.parse(JSON.stringify(baseOptions)));
+    chartAmp.options.plugins.legend.display = true;
+    chartFlow.options.plugins.legend.display = true;
+    chartAmp.options.scales.y.title = {display:true, text:'Amp (A)', color:'#cbd5e1'};
+    chartFlow.options.scales.y.title= {display:true, text:'Flow (L/min)', color:'#cbd5e1'};
+
+    function ensureDatasetsFor(id){
+      const color = hashColor(id);
+      if(!chartAmp.data.datasets.find(d=>d.label===id)){
+        chartAmp.data.datasets.push({label:id, data:[], borderColor:color, tension:.2, pointRadius:0, borderWidth:2});
+      }
+      if(!chartFlow.data.datasets.find(d=>d.label===id)){
+        chartFlow.data.datasets.push({label:id, data:[], borderColor:color, tension:.2, pointRadius:0, borderWidth:2});
+      }
+    }
+    function removeDatasetsFor(id){
+      chartAmp.data.datasets  = chartAmp.data.datasets.filter(d=>d.label!==id);
+      chartFlow.data.datasets = chartFlow.data.datasets.filter(d=>d.label!==id);
+    }
+    function syncDatasets(){
+      // Ensure all selected have datasets, and non-selected removed
+      selected.forEach(id=> ensureDatasetsFor(id));
+      chartAmp.data.datasets  = chartAmp.data.datasets.filter(d=> selected.has(d.label));
+      chartFlow.data.datasets = chartFlow.data.datasets.filter(d=> selected.has(d.label));
+      chartAmp.update(); chartFlow.update();
+    }
+
+    /* ---------- History buffer ---------- */
+    const history = new Map(); // id -> {amp: Array<{x,y}>, flow: Array<{x,y}>, lastPush: number}
+    const minIntervalMs = 1000; // เก็บจุดอย่างน้อยทุก 1s/ปั๊ม เพื่อลดภาระ
+
+    function pushPoint(id, amp, flow){
+      const now = Date.now();
+      let rec = history.get(id);
+      if(!rec){ rec = {amp:[], flow:[], lastPush:0}; history.set(id, rec); }
+      if(now - rec.lastPush < minIntervalMs){
+        // อัปเดตจุดล่าสุดแทนการเพิ่มจุดใหม่ เพื่อลดความหนาแน่น
+        const aLast = rec.amp[rec.amp.length-1]; if(aLast) aLast.y = amp;
+        const fLast = rec.flow[rec.flow.length-1]; if(fLast) fLast.y = flow;
+      }else{
+        rec.amp.push({x: now, y: amp});
+        rec.flow.push({x: now, y: flow});
+        rec.lastPush = now;
+      }
+    }
+
+    function pruneOld(windowMs){
+      const cutoff = Date.now() - windowMs;
+      history.forEach(rec=>{
+        while(rec.amp.length && rec.amp[0].x < cutoff) rec.amp.shift();
+        while(rec.flow.length && rec.flow[0].x< cutoff) rec.flow.shift();
+      });
+    }
+
+    function repaintCharts(){
+      const windowMs = parseInt(document.getElementById('fWindow').value,10) || 900000;
+      pruneOld(windowMs);
+      // sync datasets data from history for selected ids
+      chartAmp.data.datasets.forEach(ds=>{ const rec=history.get(ds.label); ds.data = rec? rec.amp.slice() : []; });
+      chartFlow.data.datasets.forEach(ds=>{ const rec=history.get(ds.label); ds.data = rec? rec.flow.slice(): []; });
+      chartAmp.update('none'); chartFlow.update('none');
+    }
+
+    let paused=false;
+    document.getElementById('btnPause').addEventListener('click',()=>{
+      paused=!paused; document.getElementById('btnPause').textContent = paused? 'Resume':'Pause';
+    });
+    document.getElementById('fWindow').addEventListener('change', ()=> repaintCharts());
+
+    /* ---------- Live WS ---------- */
+    const liveBadge = document.getElementById('liveBadge');
+    function setLive(state,text){
+      liveBadge.classList.remove('ok','bad');
+      if(state==='ok'){ liveBadge.classList.add('ok'); liveBadge.textContent='LIVE: connected'; }
+      else if(state==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent='LIVE: disconnected'; }
+      else liveBadge.textContent = text || 'LIVE: idle';
+    }
+
+    const WS_URL = await resolveWS();
+    let ws, wsTimer, backoff=2000;
+    function connectWS(){
+      if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
+      try{ ws=new WebSocket(WS_URL); }catch(e){ console.warn('WS construct error',e); setLive('bad'); return; }
+      ws.onopen   =()=>{ backoff=2000; setLive('ok'); };
+      ws.onmessage=(ev)=>{
+        try{
+          const data=JSON.parse(ev.data);
+          if(Array.isArray(data)) data.forEach(applyUpdate); else applyUpdate(data);
+        }catch(e){ console.warn('WS parse fail',e); }
+      };
+      ws.onclose  =()=>{ setLive('bad'); clearTimeout(wsTimer); wsTimer=setTimeout(connectWS, backoff); backoff=Math.min(backoff*1.8, 20000); };
+      ws.onerror  =(e)=> console.warn('WS error', e);
+    }
+
+    const liveState = {}; // id -> {enabled, amp, flow}
+    function applyUpdate(m){
+      if(!m || typeof m.id!== 'string') return;
+      const id=m.id;
+      if(!(id in liveState)) liveState[id] = {enabled:true, amp:0, flow:0};
+      if(typeof m.enabled==='boolean') liveState[id].enabled = m.enabled;
+      if(typeof m.amp==='number')     liveState[id].amp     = m.amp;
+      if(typeof m.flow==='number')    liveState[id].flow    = m.flow;
+      pushPoint(id, liveState[id].amp||0, liveState[id].flow||0);
+    }
+
+    connectWS(); setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
+
+    // Chart repaint loop
+    function tick(){
+      requestAnimationFrame(tick);
+      if(!paused) repaintCharts();
+    }
+    tick();
+
+    // ---- Navigation buttons ----
+    function backTo3D(){
+      const ref = document.referrer;
+      try{
+        if(ref && new URL(ref).origin === location.origin){ history.back(); return; }
+      }catch(e){}
+      const q = new URLSearchParams(location.search);
+      const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+      const home = localStorage.getItem('home3D') || './index.html';
+      const url = new URL(home, location.href); if(ws) url.searchParams.set('ws', ws);
+      location.href = url.pathname + url.search;
+    }
+    document.getElementById('btnBack3D').addEventListener('click', backTo3D);
+
+    document.getElementById('btnGauges').addEventListener('click', ()=>{
+      const q = new URLSearchParams(location.search);
+      const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+      const url = new URL('./pumps_gauges.html', location.href); if(ws) url.searchParams.set('ws', ws);
+      location.href = url.pathname + url.search;
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', ()=>{
+      try{ localStorage.removeItem('sessionV1'); }catch(e){}
+      const next = encodeURIComponent('./pumps_graphs.html');
+      location.href = './login.html?next=' + next;
+    });
+
+  </script>
+</body>
+</html>
