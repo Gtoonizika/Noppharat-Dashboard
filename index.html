@@ -86,6 +86,8 @@
 
   <div id="topbar">
     <div id="leftArea">
+      <!-- 🌟 เพิ่มปุ่ม Graphs ฝั่งซ้าย -->
+      <button id="btnGraphs" class="topbtn" title="Graphs">Graphs</button>
       <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
     </div>
@@ -337,7 +339,7 @@
         const defaultShow = labelPrefs[name] !== false;
         g.userData.state={name,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
         g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2);
-          // animations
+          // animations (ย้ายออกเพื่อย่อโค้ด)
         };
         return g;
       }
@@ -576,6 +578,15 @@
         const q = new URLSearchParams(location.search);
         const ws = q.get('ws');
         const target = './pumps_gauges.html' + (ws ? ('?ws=' + encodeURIComponent(ws)) : '');
+        location.href = target;
+      });
+
+      // Graphs button -> pumps_graphs.html (carry ?ws= if present)
+      const btnGraphs = document.getElementById('btnGraphs');
+      btnGraphs?.addEventListener('click', ()=>{
+        const q = new URLSearchParams(location.search);
+        const ws = q.get('ws');
+        const target = './pumps_graphs.html' + (ws ? ('?ws=' + encodeURIComponent(ws)) : '');
         location.href = target;
       });
 
