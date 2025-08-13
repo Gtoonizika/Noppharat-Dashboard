@@ -666,6 +666,68 @@
     window.addEventListener('keydown', (e)=>{ if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='b'){ panelOpen=!panelOpen; localStorage.setItem('panelOpenV1', JSON.stringify(panelOpen)); applyPanelState(); }});
     applyPanelState();
 
+    /* ===== Live data via WebSocket (Method 2: GitHub Pages + Tunnel) ===== */
+    const qs = new URLSearchParams(location.search);
+    const wsParam = qs.get('ws');                       // เช่น wss://xxxxx.trycloudflare.com/ws/pumps/05022526 (จะ encode หรือไม่ก็ได้)
+    const DEFAULT_WS_PATH = '/ws/pumps/05022526';
+    const WS_URL = wsParam
+      ? decodeURIComponent(wsParam)
+      : ((location.protocol==='https:' ? 'wss://' : 'ws://') + location.host + DEFAULT_WS_PATH);
+
+    const LIVE = { connected:false, last:0, count:0 };
+    function updateLiveDiag(){
+      const el = document.getElementById('diagText');
+      const age = LIVE.last ? Math.round((Date.now()-LIVE.last)/1000) : '-';
+      if (el) el.textContent = LIVE.connected
+        ? `LIVE: connected • last ${age}s • msgs ${LIVE.count}`
+        : 'LIVE: disconnected';
+    }
+    function applyLiveItem(msg){
+      const id = msg.id || msg.name || msg.pumpId;
+      if(!id) return;
+      const rec = (pumpsAll||[]).find(p => p.id===id || p.name===id);
+      if(!rec) return;
+      const s = rec.group.userData.state;
+      if (typeof msg.enabled === 'boolean') s.enabled = msg.enabled;
+      if (msg.amp  != null) s.targetCurrent = Number(msg.amp)  || 0;
+      if (msg.flow != null) s.targetFlow    = Number(msg.flow) || 0;
+      s.lastUpdate = Date.now();
+    }
+    function handleWSMessage(ev){
+      let data; try{ data = JSON.parse(ev.data); }catch(e){ return; }
+      (Array.isArray(data) ? data : [data]).forEach(applyLiveItem);
+      LIVE.count++; LIVE.last = Date.now(); updateLiveDiag();
+    }
+    (function connectWS(){
+      try{
+        const ws = new WebSocket(WS_URL);
+        ws.addEventListener('open',  ()=>{ LIVE.connected = true;  updateLiveDiag(); });
+        ws.addEventListener('close', ()=>{ LIVE.connected = false; updateLiveDiag(); setTimeout(connectWS, 1500 + Math.random()*1000); });
+        ws.addEventListener('error', ()=>{ /* ignore */ });
+        ws.addEventListener('message', handleWSMessage);
+      }catch(e){
+        LIVE.connected = false; updateLiveDiag();
+        setTimeout(connectWS, 2000);
+      }
+    })();
+    updateLiveDiag();
+
+    /* Optional: CSV export (ปุ่ม Export CSV ใช้งานได้) */
+    function csvEscape(v){ if(v==null) return ''; const s=String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }
+    function buildCSV(rows, header){ const head=header.join(','); const lines=rows.map(r=> header.map(h=> csvEscape(r[h])).join(',')); return [head].concat(lines).join('\n'); }
+    btnExport.addEventListener('click', ()=>{
+      const rows = rowsSnapshot().map(r=>({
+        id:r.id, floor:r.floor, room:r.room, name:r.name,
+        state:r.enabled?'ON':'OFF',
+        amp:r.amp.toFixed(2), flow:r.flow.toFixed(0)
+      }));
+      const csv = buildCSV(rows, ['id','floor','room','name','state','amp','flow']);
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='pumps_status.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
     /* Animate */
     const lerp=(a,b,t)=>a+(b-a)*t; let last=performance.now();
     function animate(now){ requestAnimationFrame(animate); const dt=Math.min(0.1,(now-last)/1000); last=now;
