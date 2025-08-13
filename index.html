@@ -279,18 +279,6 @@
     }
     function extrudeRect(w, h, t){ return new THREE.Mesh(new THREE.BoxGeometry(w, h, t), wallMat); }
 
-    function buildRoomRect({x, z, w, d, h=2.7, thickness=.18, color=0xe5ecf4}, parent){
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(w-0.02, d-0.02), parent.userData.floorMat);
-      floor.rotation.x=-Math.PI/2; floor.position.set(x, 0.01, z); floor.receiveShadow=true; parent.add(floor);
-      const y=h/2; const t=thickness; const wc=new THREE.MeshStandardMaterial({ color, roughness:0.95});
-      const n=extrudeRect(w, h, t); n.material=wc; n.position.set(x, y, z-d/2); parent.add(n);
-      const s=extrudeRect(w, h, t); s.material=wc; s.position.set(x, y, z+d/2); parent.add(s);
-      const e=extrudeRect(t, h, d); e.material=wc; e.position.set(x+w/2, y, z); parent.add(e);
-      const wv=extrudeRect(t, h, d); wv.material=wc; wv.position.set(x-w/2, y, z); parent.add(wv);
-      addNeonRectEdges(parent, x, z, w, d, h-0.02, parent.userData.neonColor || 0x54ff9f);
-      return {floor, walls:[n,s,e,wv]};
-    }
-
     /* =================== Pump model =================== */
     let labelPrefs = {}; try{ const raw=localStorage.getItem('labelPrefsV1'); if(raw) labelPrefs=JSON.parse(raw)||{}; }catch(e){}
     const saveLabelPrefs=()=>{ try{ localStorage.setItem('labelPrefsV1', JSON.stringify(labelPrefs)); }catch(e){} };
@@ -665,8 +653,8 @@
       });
       const tbody = document.querySelector('#statusTable tbody');
       if(tbody){
-        Array.from(tbody.querySelectorAll('tr')).forEach(tr=> tr.className='';
-        );
+        // ✅ แก้บรรทัด error: missing ) after argument list
+        Array.from(tbody.querySelectorAll('tr')).forEach(tr => tr.className = '');
         enabled.forEach(r=>{
           const tr=tbody.querySelector(`tr[data-id="${r.id}"]`);
           if(!tr) return;
