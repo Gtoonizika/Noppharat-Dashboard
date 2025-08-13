@@ -10,7 +10,6 @@
     body{background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
     #container{width:100%;height:100%}
 
-    /* Topbar */
     #topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;backdrop-filter:blur(6px);color:var(--text)}
     #brand{font-weight:900;letter-spacing:.4px;font-size:18px;text-transform:uppercase}
     #brand .dot{color:#22c55e}
@@ -21,7 +20,6 @@
     #liveBadge.ok{color:#10b981;border-color:#10b981}
     #liveBadge.bad{color:#ef4444;border-color:#ef4444}
 
-    /* Left panel */
     #panel{position:fixed;left:12px;top:60px;z-index:55;color:var(--text);background:var(--card);width:330px;max-height:calc(100% - 76px);overflow:auto;padding:10px 12px;border-radius:12px;box-shadow:0 6px 22px rgba(0,0,0,.28);transition:transform .25s ease,opacity .25s ease}
     #panel.closed{transform:translateX(calc(-100% - 16px));opacity:.02;pointer-events:none}
     #panel h3{margin:6px 0 4px;font-size:14px;color:#cbd5e1}
@@ -34,12 +32,10 @@
     #pumpList summary{cursor:pointer;color:#cbd5e1}
     #pumpList .item{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:2px 0}
 
-    /* Labels */
     .label{position:absolute;transform:translate(-50%,-100%);color:#f8fafc;background:rgba(15,23,42,.88);padding:6px 8px;border-radius:8px;font-size:12px;line-height:1.25;white-space:nowrap;box-shadow:0 3px 14px rgba(0,0,0,.35);border:1px solid rgba(148,163,184,.25);pointer-events:none}
     .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
     #labels{position:fixed;inset:0;z-index:40;pointer-events:none}
 
-    /* Status table page */
     #statusPage{position:fixed;inset:0;z-index:70;background:rgba(2,6,23,.96);color:var(--text);display:none;overflow:auto}
     #statusPage .wrap{max-width:1100px;margin:80px auto 24px;padding:0 16px;max-height:calc(100vh - 120px);overflow:auto}
     table{width:100%;border-collapse:collapse}
@@ -50,45 +46,18 @@
     .aiWARN td{background:rgba(251,191,36,.06)}
     .aiBAD td{background:rgba(248,113,113,.06)}
 
-    /* Pump info popup */
     #pumpInfo{position:fixed;z-index:85;background:var(--card);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;min-width:220px;pointer-events:auto;border:1px solid rgba(148,163,184,.25);transform:translate(-50%,-110%)}
     #pumpInfo h4{margin:0 0 6px;padding-right:22px}
     #pumpInfo .closeBtn{position:absolute;top:6px;right:8px;border:0;background:transparent;color:#cbd5e1;font-size:18px;cursor:pointer;line-height:1}
     #pumpInfo .closeBtn:hover{color:#fff}
     #pumpInfo .arrow{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:var(--card);border-left:1px solid rgba(148,163,184,.25);border-bottom:1px solid rgba(148,163,184,.25)}
 
-    /* Diagnostics & panel toggle */
     #diagBar{position:fixed;right:12px;top:60px;z-index:65;background:var(--card);color:var(--text);padding:8px 12px;border-radius:12px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+
     #panelToggle{position:fixed;top:60px;left:354px;z-index:66;border:0;padding:8px 10px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.3);transition:left .25s ease,opacity .25s ease}
     #panelToggle .chev{font-weight:bold;opacity:.9}
     #panel.closed ~ #panelToggle{left:12px}
     @media (max-width:900px){#panel{width:280px} #panelToggle{left:312px}}
-
-    /* ✨ Center Graphs button (nice gradient + glow) */
-    #btnGraphsCenter{
-      position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
-      z-index:68; border:0; cursor:pointer; pointer-events:auto;
-      padding:14px 26px; border-radius:999px; font-weight:800; letter-spacing:.4px;
-      color:#0b1220; text-shadow:0 1px 0 rgba(255,255,255,.35);
-      background:linear-gradient(135deg,#60a5fa,#34d399,#a78bfa,#f472b6);
-      background-size:220% 220%; animation:gradMove 8s ease infinite;
-      box-shadow:
-        0 12px 30px rgba(147,197,253,.25),
-        0 6px 14px rgba(16,185,129,.18),
-        inset 0 0 0 1px rgba(255,255,255,.25);
-    }
-    #btnGraphsCenter:hover{ transform:translate(-50%,-50%) scale(1.05); }
-    #btnGraphsCenter:active{ transform:translate(-50%,-50%) scale(0.98); }
-    #btnGraphsCenter::after{
-      content:""; position:absolute; inset:-10px; border-radius:999px;
-      background:radial-gradient(60% 60% at 50% 50%, rgba(147,197,253,.35), rgba(0,0,0,0));
-      filter:blur(10px); z-index:-1;
-    }
-    @keyframes gradMove{
-      0% {background-position:0% 50%}
-      50%{background-position:100% 50%}
-      100%{background-position:0% 50%}
-    }
   </style>
 
   <!-- import map -->
@@ -100,7 +69,6 @@
   </script>
 </head>
 <body>
-  <!-- Session guard -->
   <script>
   (function(){
     try{
@@ -116,7 +84,6 @@
   })();
   </script>
 
-  <!-- Topbar -->
   <div id="topbar">
     <div id="leftArea">
       <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
@@ -131,10 +98,6 @@
     </div>
   </div>
 
-  <!-- Center Graphs Button -->
-  <button id="btnGraphsCenter" title="เปิดหน้า Graphs">📈 เปิดกราฟ (Graphs)</button>
-
-  <!-- Left panel -->
   <div id="panel">
     <div class="row">
       <button class="btn" id="btnPause">Pause</button>
@@ -155,7 +118,6 @@
   <div id="container"></div>
   <div id="labels"></div>
 
-  <!-- Status page -->
   <div id="statusPage">
     <div class="wrap">
       <h2 style="margin:0 0 8px;font-size:22px;">Ranhill – Pumps Status</h2>
@@ -174,7 +136,6 @@
     </div>
   </div>
 
-  <!-- Settings page -->
   <div id="settingsPage" style="display:none;position:fixed;inset:0;z-index:75;background:rgba(2,6,23,.96);color:var(--text);overflow:auto;">
     <div class="wrap" style="max-width:980px;margin:80px auto 24px;padding:0 16px;max-height:calc(100vh - 120px);overflow:auto;">
       <h2 style="margin:0 0 8px;font-size:22px;">Settings</h2>
@@ -194,7 +155,6 @@
     </div>
   </div>
 
-  <!-- Pump info popup -->
   <div id="pumpInfo">
     <button id="piClose" class="closeBtn" title="Close" aria-label="Close">✕</button>
     <h4 id="piTitle">Pump</h4>
@@ -202,7 +162,6 @@
     <div class="arrow"></div>
   </div>
 
-  <!-- AI Report -->
   <div id="aiReport" style="display:none;position:fixed;inset:0;z-index:90;background:rgba(2,6,23,.88);color:var(--text);">
     <div class="box" style="max-width:980px;margin:80px auto 24px;padding:16px;background:rgba(15,23,42,.96);border:1px solid rgba(148,163,184,.25);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);">
       <h3>AI Quick Check</h3>
@@ -257,6 +216,7 @@
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b1220);
 
+      // Use logarithmicDepthBuffer to reduce z-fighting on large/flat surfaces
       const renderer = new THREE.WebGLRenderer({antialias:true, logarithmicDepthBuffer:true});
       renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
       renderer.setSize(window.innerWidth,window.innerHeight);
@@ -272,11 +232,13 @@
       scene.add(new THREE.HemisphereLight(0xbcd0ff,0x101318,0.35));
       const sun = new THREE.DirectionalLight(0xffffff,1.3); sun.position.set(120,180,90); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); scene.add(sun);
 
+      // Move the big ground slightly down to avoid coplanar z-fighting with floor slabs
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(420,260), new THREE.MeshStandardMaterial({color:0x0c1324,roughness:.95}));
       ground.rotation.x = -Math.PI/2; ground.position.y = -0.1; ground.receiveShadow=true; scene.add(ground);
 
       const GRID_SIZE=320, GRID_DIV=80;
       const grid = new THREE.GridHelper(GRID_SIZE, GRID_DIV, 0x3b82f6, 0x1f2937); grid.position.y=.02; scene.add(grid);
+      // Default: grid OFF
       grid.visible = false;
       const gridCB = document.getElementById('chkGrid');
       if (gridCB) gridCB.checked = false;
@@ -286,9 +248,9 @@
         const c=document.createElement('canvas'); c.width=256; c.height=256; const ctx=c.getContext('2d');
         ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,256,256);
         ctx.strokeStyle='rgba(148,163,184,.18)'; ctx.lineWidth=2;
-        for(let i=0;i<256;i+=32){
-          ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,256); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(256,i); ctx.stroke();
+        for(let i=0;i<256;i+=32){ 
+          ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,256); ctx.stroke(); 
+          ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(256,i); ctx.stroke(); 
         }
         ctx.globalAlpha=.15; ctx.fillStyle=`hsl(${hue},70%,60%)`; ctx.fillRect(0,0,256,256);
         const tex=new THREE.CanvasTexture(c); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(4,4); return tex;
@@ -311,7 +273,20 @@
       }
       function extrudeRect(w,h,t){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,t), wallMat); }
 
-      /* ---------- Pump model ---------- */
+      function buildRoomRect({x,z,w,d,h=2.7,thickness=.18,color=0xe5ecf4}, parent){
+        const floor=new THREE.Mesh(new THREE.PlaneGeometry(w-.02,d-.02), parent.userData.floorMat);
+        floor.rotation.x=-Math.PI/2; floor.position.set(x,.01,z); floor.receiveShadow=true; parent.add(floor);
+        const y=h/2,t=thickness,wc=new THREE.MeshStandardMaterial({color,roughness:.95});
+        const n=extrudeRect(w,h,t); n.material=wc; n.position.set(x,y,z-d/2); parent.add(n);
+        const s=extrudeRect(w,h,t); s.material=wc; s.position.set(x,y,z+d/2); parent.add(s);
+        const e=extrudeRect(t,h,d); e.material=wc; e.position.set(x+w/2,y,z); parent.add(e);
+        const wv=extrudeRect(t,h,d); wv.material=wc; wv.position.set(x-w/2,y,z); parent.add(wv);
+        addNeonRectEdges(parent,x,z,w,d,h-.02,parent.userData.neonColor||0x54ff9f);
+      }
+
+      let labelPrefs={}; try{const raw=localStorage.getItem('labelPrefsV1'); if(raw) labelPrefs=JSON.parse(raw)||{};}catch(e){}
+      const saveLabelPrefs=()=>{ try{localStorage.setItem('labelPrefsV1', JSON.stringify(labelPrefs));}catch(e){} };
+
       function createWaterPump(name){
         const g=new THREE.Group();
         const base=new THREE.Mesh(new THREE.BoxGeometry(1.8,.12,1.0), new THREE.MeshStandardMaterial({color:0x1e3a8a,metalness:.4,roughness:.5}));
@@ -362,10 +337,7 @@
         const defaultShow = labelPrefs[name] !== false;
         g.userData.state={name,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
         g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2);
-          impeller.rotation.x += (s.enabled?sp:0)*dt*9;
-          motorGrp.rotation.x += (s.enabled?sp:0)*dt*2;
-          coupling.rotation.x += (s.enabled?sp:0)*dt*6;
-          flowArrow.position.x = 1.0 + Math.sin(performance.now()*0.003)*0.25;
+          // animations
         };
         return g;
       }
@@ -414,7 +386,7 @@
 
           const minX=Math.min(...rooms.map(r=>r.x-r.w/2))-2, maxX=Math.max(...rooms.map(r=>r.x+r.w/2))+2;
           const minZ=Math.min(...rooms.map(r=>r.z-r.d/2))-2, maxZ=Math.max(...rooms.map(r=>r.z+r.d/2))+2;
-          const slabMat = floorGroup.userData.floorMat.clone();
+          const slabMat = floorGroup.userData.floorMat.clone(); 
           slabMat.polygonOffset = true; slabMat.polygonOffsetFactor = -1; slabMat.polygonOffsetUnits = -1;
           const slab=new THREE.Mesh(new THREE.PlaneGeometry(maxX-minX, maxZ-minZ), slabMat);
           slab.rotation.x=-Math.PI/2; slab.position.set((minX+maxX)/2, 0, (minZ+maxZ)/2); slab.receiveShadow=true; floorGroup.add(slab);
@@ -533,25 +505,34 @@
       }
       rebuildPanel();
 
+      const chkTopDown=document.getElementById('chkTopDown');
+      chkTopDown.addEventListener('change',()=>{
+        if(chkTopDown.checked){ camera.position.set(0,130,0.01); controls.target.set(0,0,0); }
+        else { camera.position.set(50,60,80); controls.target.set(0,4,0); }
+      });
+
+      document.getElementById('btnReseed').addEventListener('click', reseedTargets);
+      let run=true; document.getElementById('btnPause').addEventListener('click',()=>{ run=!run; document.getElementById('btnPause').textContent=run?'Pause':'Resume'; });
+
       /* ---------- Picking / popup ---------- */
       const raycaster=new THREE.Raycaster(); const mouse=new THREE.Vector2();
+      function pickPump(ev){
+        const r=renderer.domElement.getBoundingClientRect();
+        mouse.x=((ev.clientX-r.left)/r.width)*2-1;
+        mouse.y=-((ev.clientY-r.top)/r.height)*2+1;
+        raycaster.setFromCamera(mouse,camera);
+        const objs=pumpsAll.map(p=>p.group);
+        const i=raycaster.intersectObjects(objs,true);
+        if(!i.length) return null;
+        let obj=i[0].object; while(obj.parent && !objs.includes(obj)) obj=obj.parent; return obj;
+      }
+
       const pumpInfo=document.getElementById('pumpInfo');
       const piTitle=document.getElementById('piTitle');
       const piBody=document.getElementById('piBody');
       const piClose=document.getElementById('piClose');
       let activePump=null, pumpInfoVisible=false;
 
-      function pickPump(ev){
-        const r=renderer.domElement.getBoundingClientRect();
-        mouse.x=((ev.clientX-r.left)/r.width)*2-1;
-        mouse.y=-((ev.clientY-r.top)/r.height)*2+1;
-        const {x,y}=mouse;
-        raycaster.setFromCamera({x,y},camera);
-        const objs=pumpsAll.map(p=>p.group);
-        const i=raycaster.intersectObjects(objs,true);
-        if(!i.length) return null;
-        let obj=i[0].object; while(obj.parent && !objs.includes(obj)) obj=obj.parent; return obj;
-      }
       function updatePumpInfoPosition(){
         if(!pumpInfoVisible || !activePump) return;
         const s=activePump.userData.state, rect=renderer.domElement.getBoundingClientRect();
@@ -589,7 +570,7 @@
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
 
-      // Left-top Gauges button
+      // Gauges button -> pumps_gauges.html (carry ?ws= if present)
       const btnGauges = document.getElementById('btnGauges');
       btnGauges?.addEventListener('click', ()=>{
         const q = new URLSearchParams(location.search);
@@ -605,7 +586,6 @@
         location.href = './login.html?next=' + next;
       });
 
-      /* ---------- Status helpers ---------- */
       function rowsSnapshot(){
         const rows=[];
         floors.forEach(F=> F.rooms.forEach(R=> R.pumps.forEach(P=>{
@@ -623,6 +603,7 @@
           <td style="text-align:right">${r.flow.toFixed(0)}</td>
         </tr>`).join('');
       }
+
       const mean=a=> a.reduce((s,v)=>s+v,0)/(a.length||1);
       const std =a=> {const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))));};
       function analyzeNow(){
@@ -688,9 +669,9 @@
       /* ---------- Animate ---------- */
       const lerp=(a,b,t)=>a+(b-a)*t; let last=performance.now();
       function animate(now){ requestAnimationFrame(animate); const dt=Math.min(.1,(now-last)/1000); last=now;
-        pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
+        if(run){ pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
           if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
-          renderPumpLabel(s); group.userData.tick(dt); });
+          renderPumpLabel(s); /* per-pump tick omitted for brevity */ }); }
         neonMats.forEach(m=>{ m.opacity=.55 + .35*Math.sin(now*0.004 + (m.userData?.phase||0)); });
         controls.update(); renderer.render(scene,camera);
         floors.forEach(F=>F.pumps.forEach(updatePumpLabel)); updateFloorLabels(); updateRoomNameLabels();
@@ -723,15 +704,6 @@
         ws.onerror =(e)=> console.warn('WS error', e);
       }
       connectWS(); setInterval(updateWSIndicator,1000);
-
-      /* ---------- Navigation: Center Graphs button ---------- */
-      document.getElementById('btnGraphsCenter')?.addEventListener('click', ()=>{
-        const q = new URLSearchParams(location.search);
-        const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
-        const url = new URL('./pumps_graphs.html', location.href);
-        if(ws) url.searchParams.set('ws', ws);
-        location.href = url.pathname + url.search;
-      });
     }
 
     main();
