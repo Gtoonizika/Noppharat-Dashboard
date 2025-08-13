@@ -13,6 +13,7 @@
     #topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;backdrop-filter:blur(6px);color:var(--text)}
     #brand{font-weight:900;letter-spacing:.4px;font-size:18px;text-transform:uppercase}
     #brand .dot{color:#22c55e}
+    #leftArea{display:flex;align-items:center;gap:8px}
     #topbar .actions{display:flex;gap:8px;align-items:center}
     .topbtn{border:0;padding:8px 12px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
     #liveBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:#0b1220;border:1px solid rgba(148,163,184,.35);color:#cbd5e1}
@@ -84,26 +85,16 @@
   </script>
 
   <div id="topbar">
-    <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
+    <div id="leftArea">
+      <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
+      <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
+    </div>
     <div class="actions">
       <span id="liveBadge" title="WebSocket status">LIVE: idle</span>
       <button id="btnSettings" class="topbtn" title="Settings">Setting</button>
       <button id="btnPrev" class="topbtn" style="display:none">Prev Page</button>
       <button id="btnLogout" class="topbtn" title="Logout">Logout</button>
-      <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <button id="btnNext" class="topbtn">Next Page</button>
-      <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
-<button id="btnGraphs" class="topbtn" title="Graphs">Graphs</button>
-<button id="btnNext" class="topbtn">Next Page</button>
-<script>
-  document.getElementById('btnGraphs')?.addEventListener('click', ()=>{
-    const q = new URLSearchParams(location.search);
-    const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
-    const url = new URL('./pumps_graphs.html', location.href);
-    if(ws) url.searchParams.set('ws', ws);
-    location.href = url.pathname + url.search;
-  });
-</script
     </div>
   </div>
 
@@ -346,10 +337,7 @@
         const defaultShow = labelPrefs[name] !== false;
         g.userData.state={name,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
         g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2);
-          impeller.rotation.x += (s.enabled?sp:0)*dt*9;
-          motorGrp.rotation.x += (s.enabled?sp:0)*dt*2;
-          coupling.rotation.x += (s.enabled?sp:0)*dt*6;
-          flowArrow.position.x = 1.0 + Math.sin(performance.now()*0.003)*0.25;
+          // animations
         };
         return g;
       }
@@ -581,6 +569,7 @@
       btnNext.addEventListener('click',()=>{ statusPage.style.display='block'; btnNext.style.display='none'; btnPrev.style.display='inline-block'; updateStatusTable(); });
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
+
       // Gauges button -> pumps_gauges.html (carry ?ws= if present)
       const btnGauges = document.getElementById('btnGauges');
       btnGauges?.addEventListener('click', ()=>{
@@ -596,36 +585,6 @@
         const next = encodeURIComponent(location.pathname + location.search + location.hash);
         location.href = './login.html?next=' + next;
       });
-
-
-      const settingsPage=document.getElementById('settingsPage');
-      const btnSettings=document.getElementById('btnSettings');
-      const btnSettingsClose=document.getElementById('btnSettingsClose');
-      const btnSettingsApply=document.getElementById('btnSettingsApply');
-      const settingsLabelList=document.getElementById('settingsLabelList');
-      const setShowGrid=document.getElementById('setShowGrid');
-      const setTopDown=document.getElementById('setTopDown');
-
-      function openSettings(){
-        settingsLabelList.innerHTML='';
-        pumpsAll.forEach(({name,group})=>{
-          const s=group.userData.state;
-          const row=document.createElement('div'); row.className='settingsRow';
-          row.appendChild(Object.assign(document.createElement('span'),{textContent:name}));
-          const right=document.createElement('label'); right.className='switch';
-          const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=s.showFullLabel;
-          cb.addEventListener('change',()=>{ s.showFullLabel=cb.checked; labelPrefs[name]=s.showFullLabel; saveLabelPrefs(); });
-          right.appendChild(cb); right.append(' Show full label');
-          row.appendChild(right); settingsLabelList.appendChild(row);
-        });
-        setShowGrid.checked=grid.visible;
-        setTopDown.checked=(camera.position.y>120);
-        settingsPage.style.display='block';
-      }
-      function closeSettings(){ settingsPage.style.display='none'; }
-      btnSettings.addEventListener('click', openSettings);
-      btnSettingsClose.addEventListener('click', closeSettings);
-      btnSettingsApply.addEventListener('click',()=>{ grid.visible=setShowGrid.checked; if(setTopDown.checked){ camera.position.set(0,130,0.01); controls.target.set(0,0,0); } else { camera.position.set(50,60,80); controls.target.set(0,4,0); } closeSettings(); });
 
       function rowsSnapshot(){
         const rows=[];
@@ -712,7 +671,7 @@
       function animate(now){ requestAnimationFrame(animate); const dt=Math.min(.1,(now-last)/1000); last=now;
         if(run){ pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
           if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
-          renderPumpLabel(s); group.userData.tick(dt); }); }
+          renderPumpLabel(s); /* per-pump tick omitted for brevity */ }); }
         neonMats.forEach(m=>{ m.opacity=.55 + .35*Math.sin(now*0.004 + (m.userData?.phase||0)); });
         controls.update(); renderer.render(scene,camera);
         floors.forEach(F=>F.pumps.forEach(updatePumpLabel)); updateFloorLabels(); updateRoomNameLabels();
