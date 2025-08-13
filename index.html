@@ -1,3 +1,18 @@
+<script>
+(function(){
+  try{
+    const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
+    if(!s || !s.exp || Date.now() > s.exp){
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.href = './login.html?next=' + next;
+    }
+  }catch(e){
+    const next = encodeURIComponent(location.pathname + location.search + location.hash);
+    location.href = './login.html?next=' + next;
+  }
+})();
+</script>
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
