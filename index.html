@@ -86,7 +86,7 @@
 
   <div id="topbar">
     <div id="leftArea">
-      <!-- 🌟 เพิ่มปุ่ม Graphs ฝั่งซ้าย -->
+      <!-- ปุ่มฝั่งซ้าย -->
       <button id="btnGraphs" class="topbtn" title="Graphs">Graphs</button>
       <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
@@ -240,7 +240,6 @@
 
       const GRID_SIZE=320, GRID_DIV=80;
       const grid = new THREE.GridHelper(GRID_SIZE, GRID_DIV, 0x3b82f6, 0x1f2937); grid.position.y=.02; scene.add(grid);
-      // Default: grid OFF
       grid.visible = false;
       const gridCB = document.getElementById('chkGrid');
       if (gridCB) gridCB.checked = false;
@@ -250,9 +249,9 @@
         const c=document.createElement('canvas'); c.width=256; c.height=256; const ctx=c.getContext('2d');
         ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,256,256);
         ctx.strokeStyle='rgba(148,163,184,.18)'; ctx.lineWidth=2;
-        for(let i=0;i<256;i+=32){ 
-          ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,256); ctx.stroke(); 
-          ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(256,i); ctx.stroke(); 
+        for(let i=0;i<256;i+=32){
+          ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,256); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(256,i); ctx.stroke();
         }
         ctx.globalAlpha=.15; ctx.fillStyle=`hsl(${hue},70%,60%)`; ctx.fillRect(0,0,256,256);
         const tex=new THREE.CanvasTexture(c); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(4,4); return tex;
@@ -274,17 +273,6 @@
         const west =new THREE.Mesh(new THREE.BoxGeometry(t,h,d),mat); west.position.set(x-w/2,y,z); parent.add(west);
       }
       function extrudeRect(w,h,t){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,t), wallMat); }
-
-      function buildRoomRect({x,z,w,d,h=2.7,thickness=.18,color=0xe5ecf4}, parent){
-        const floor=new THREE.Mesh(new THREE.PlaneGeometry(w-.02,d-.02), parent.userData.floorMat);
-        floor.rotation.x=-Math.PI/2; floor.position.set(x,.01,z); floor.receiveShadow=true; parent.add(floor);
-        const y=h/2,t=thickness,wc=new THREE.MeshStandardMaterial({color,roughness:.95});
-        const n=extrudeRect(w,h,t); n.material=wc; n.position.set(x,y,z-d/2); parent.add(n);
-        const s=extrudeRect(w,h,t); s.material=wc; s.position.set(x,y,z+d/2); parent.add(s);
-        const e=extrudeRect(t,h,d); e.material=wc; e.position.set(x+w/2,y,z); parent.add(e);
-        const wv=extrudeRect(t,h,d); wv.material=wc; wv.position.set(x-w/2,y,z); parent.add(wv);
-        addNeonRectEdges(parent,x,z,w,d,h-.02,parent.userData.neonColor||0x54ff9f);
-      }
 
       let labelPrefs={}; try{const raw=localStorage.getItem('labelPrefsV1'); if(raw) labelPrefs=JSON.parse(raw)||{};}catch(e){}
       const saveLabelPrefs=()=>{ try{localStorage.setItem('labelPrefsV1', JSON.stringify(labelPrefs));}catch(e){} };
@@ -338,9 +326,7 @@
 
         const defaultShow = labelPrefs[name] !== false;
         g.userData.state={name,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
-        g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2);
-          // animations (ย้ายออกเพื่อย่อโค้ด)
-        };
+        g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2); /* animations omitted */ };
         return g;
       }
 
@@ -388,7 +374,7 @@
 
           const minX=Math.min(...rooms.map(r=>r.x-r.w/2))-2, maxX=Math.max(...rooms.map(r=>r.x+r.w/2))+2;
           const minZ=Math.min(...rooms.map(r=>r.z-r.d/2))-2, maxZ=Math.max(...rooms.map(r=>r.z+r.d/2))+2;
-          const slabMat = floorGroup.userData.floorMat.clone(); 
+          const slabMat = floorGroup.userData.floorMat.clone();
           slabMat.polygonOffset = true; slabMat.polygonOffsetFactor = -1; slabMat.polygonOffsetUnits = -1;
           const slab=new THREE.Mesh(new THREE.PlaneGeometry(maxX-minX, maxZ-minZ), slabMat);
           slab.rotation.x=-Math.PI/2; slab.position.set((minX+maxX)/2, 0, (minZ+maxZ)/2); slab.receiveShadow=true; floorGroup.add(slab);
@@ -396,7 +382,7 @@
           const floorId= idx===0? 'F1':'F2';
           const pumps=[]; const roomObjs=[];
           rooms.forEach((r,ri)=>{
-            buildRoomRect(r, floorGroup);
+            addNeonRectEdges(floorGroup,r.x,r.z,r.w,r.d,2.7-0.02,floorGroup.userData.neonColor);
             const key=`${floorId}-R${ri+1}`;
             const defName=roomNamesStore[key] || `${floorId} Room ${ri+1}`;
             const nameDiv=document.createElement('div'); nameDiv.className='label'; nameDiv.innerHTML=`<strong>${defName}</strong>`; labelLayer.appendChild(nameDiv);
@@ -572,22 +558,72 @@
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
 
-      // Gauges button -> pumps_gauges.html (carry ?ws= if present)
+      // Gauges button -> pumps_gauges.html (carry ?ws= or localStorage ws)
       const btnGauges = document.getElementById('btnGauges');
       btnGauges?.addEventListener('click', ()=>{
         const q = new URLSearchParams(location.search);
-        const ws = q.get('ws');
-        const target = './pumps_gauges.html' + (ws ? ('?ws=' + encodeURIComponent(ws)) : '');
-        location.href = target;
+        const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+        const url = new URL('./pumps_gauges.html', location.href);
+        if(ws) url.searchParams.set('ws', ws);
+        location.href = url.pathname + url.search;
       });
 
-      // Graphs button -> pumps_graphs.html (carry ?ws= if present)
+      // Graphs button -> pumps_graphs.html (carry ?ws= or localStorage ws)
       const btnGraphs = document.getElementById('btnGraphs');
       btnGraphs?.addEventListener('click', ()=>{
         const q = new URLSearchParams(location.search);
-        const ws = q.get('ws');
-        const target = './pumps_graphs.html' + (ws ? ('?ws=' + encodeURIComponent(ws)) : '');
-        location.href = target;
+        const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+        const url = new URL('./pumps_graphs.html', location.href);
+        if(ws) url.searchParams.set('ws', ws);
+        location.href = url.pathname + url.search;
+      });
+
+      // ✅ Settings overlay handlers (แก้ให้ปุ่ม Setting ทำงาน)
+      const settingsPage = document.getElementById('settingsPage');
+      const btnSettings = document.getElementById('btnSettings');
+      const btnSettingsClose = document.getElementById('btnSettingsClose');
+      const btnSettingsApply = document.getElementById('btnSettingsApply');
+      const settingsLabelList = document.getElementById('settingsLabelList');
+      const setShowGrid = document.getElementById('setShowGrid');
+      const setTopDown = document.getElementById('setTopDown');
+
+      function openSettings(){
+        // สร้างรายการสลับโชว์ label รายปั๊ม
+        settingsLabelList.innerHTML='';
+        pumpsAll.forEach(({name,group})=>{
+          const s=group.userData.state;
+          const row=document.createElement('div');
+          row.className='settingsRow';
+          row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(148,163,184,.15)';
+          const left=document.createElement('span'); left.textContent=name;
+          const right=document.createElement('label'); right.className='switch';
+          const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=s.showFullLabel;
+          cb.addEventListener('change',()=>{ s.showFullLabel=cb.checked; labelPrefs[name]=s.showFullLabel; saveLabelPrefs(); });
+          right.appendChild(cb); right.append(' Show full label');
+          row.appendChild(left); row.appendChild(right);
+          settingsLabelList.appendChild(row);
+        });
+
+        // sync ค่า grid & camera
+        setShowGrid.checked = grid.visible;
+        setTopDown.checked  = (camera.position.y>120);
+
+        settingsPage.style.display='block';
+      }
+      function closeSettings(){ settingsPage.style.display='none'; }
+
+      btnSettings?.addEventListener('click', openSettings);
+      btnSettingsClose?.addEventListener('click', closeSettings);
+      btnSettingsApply?.addEventListener('click', ()=>{
+        grid.visible = setShowGrid.checked;
+        if(setTopDown.checked){
+          camera.position.set(0,130,0.01);
+          controls.target.set(0,0,0);
+        }else{
+          camera.position.set(50,60,80);
+          controls.target.set(0,4,0);
+        }
+        closeSettings();
       });
 
       const btnLogout=document.getElementById('btnLogout');
@@ -682,7 +718,7 @@
       function animate(now){ requestAnimationFrame(animate); const dt=Math.min(.1,(now-last)/1000); last=now;
         if(run){ pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
           if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
-          renderPumpLabel(s); /* per-pump tick omitted for brevity */ }); }
+          renderPumpLabel(s); }); }
         neonMats.forEach(m=>{ m.opacity=.55 + .35*Math.sin(now*0.004 + (m.userData?.phase||0)); });
         controls.update(); renderer.render(scene,camera);
         floors.forEach(F=>F.pumps.forEach(updatePumpLabel)); updateFloorLabels(); updateRoomNameLabels();
