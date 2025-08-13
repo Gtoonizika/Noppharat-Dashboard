@@ -92,6 +92,18 @@
       <button id="btnLogout" class="topbtn" title="Logout">Logout</button>
       <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <button id="btnNext" class="topbtn">Next Page</button>
+      <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
+<button id="btnGraphs" class="topbtn" title="Graphs">Graphs</button>
+<button id="btnNext" class="topbtn">Next Page</button>
+<script>
+  document.getElementById('btnGraphs')?.addEventListener('click', ()=>{
+    const q = new URLSearchParams(location.search);
+    const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+    const url = new URL('./pumps_graphs.html', location.href);
+    if(ws) url.searchParams.set('ws', ws);
+    location.href = url.pathname + url.search;
+  });
+</script
     </div>
   </div>
 
