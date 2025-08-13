@@ -1,18 +1,3 @@
-<script>
-(function(){
-  try{
-    const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
-    if(!s || !s.exp || Date.now() > s.exp){
-      const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      location.href = './login.html?next=' + next;
-    }
-  }catch(e){
-    const next = encodeURIComponent(location.pathname + location.search + location.hash);
-    location.href = './login.html?next=' + next;
-  }
-})();
-</script>
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -83,12 +68,28 @@
   </script>
 </head>
 <body>
+  <script>
+  (function(){
+    try{
+      const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
+      if(!s || !s.exp || Date.now() > s.exp){
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        location.replace('./login.html?next=' + next);
+      }
+    }catch(e){
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.replace('./login.html?next=' + next);
+    }
+  })();
+  </script>
+
   <div id="topbar">
     <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
     <div class="actions">
       <span id="liveBadge" title="WebSocket status">LIVE: idle</span>
       <button id="btnSettings" class="topbtn" title="Settings">Setting</button>
       <button id="btnPrev" class="topbtn" style="display:none">Prev Page</button>
+      <button id="btnLogout" class="topbtn" title="Logout">Logout</button>
       <button id="btnNext" class="topbtn">Next Page</button>
     </div>
   </div>
@@ -567,6 +568,13 @@
       btnNext.addEventListener('click',()=>{ statusPage.style.display='block'; btnNext.style.display='none'; btnPrev.style.display='inline-block'; updateStatusTable(); });
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
+      const btnLogout=document.getElementById('btnLogout');
+      btnLogout?.addEventListener('click',()=>{
+        try{ localStorage.removeItem('sessionV1'); }catch(e){}
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        location.href = './login.html?next=' + next;
+      });
+
 
       const settingsPage=document.getElementById('settingsPage');
       const btnSettings=document.getElementById('btnSettings');
