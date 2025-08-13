@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ranhill – IIoT SCADA 3D (AI + Collapsible Panel)</title>
+  <title>Ranhill – IIoT SCADA 3D (AI + Collapsible Panel + WS config.json)</title>
   <style>
     :root{
       --bg:#0b1220; --card:rgba(3,8,23,.76); --text:#e5e7eb; --muted:#94a3b8; --accent:#93c5fd;
@@ -17,8 +17,13 @@
     #topbar{ position:fixed; top:0; left:0; right:0; z-index:60; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; backdrop-filter: blur(6px); color:var(--text);} 
     #brand{ font-weight:900; letter-spacing:.4px; font-size:18px; text-transform:uppercase }
     #brand .dot{ color:#22c55e }
-    #topbar .actions{ display:flex; gap:8px; }
+    #topbar .actions{ display:flex; gap:8px; align-items:center; }
     .topbtn{ border:0; padding:8px 12px; border-radius:10px; background:#1f2937; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+
+    /* LIVE badge */
+    #liveBadge{ font-size:12px; padding:4px 8px; border-radius:999px; background:#0b1220; border:1px solid rgba(148,163,184,.35); color:#cbd5e1; }
+    #liveBadge.ok{ color:#10b981; border-color:#10b981; }
+    #liveBadge.bad{ color:#ef4444; border-color:#ef4444; }
 
     /* Left panel (collapsible) */
     #panel{ position:fixed; left:12px; top:60px; z-index:55; color:var(--text); background:var(--card); width:330px; max-height:calc(100% - 76px); overflow:auto; padding:10px 12px; border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,.28);
@@ -70,6 +75,8 @@
       #panelToggle{ left: 312px; }
     }
   </style>
+
+  <!-- Import map: three.js -->
   <script type="importmap">
   {
     "imports": {
@@ -83,6 +90,7 @@
   <div id="topbar">
     <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
     <div class="actions">
+      <span id="liveBadge" title="WebSocket status">LIVE: idle</span>
       <button id="btnSettings" class="topbtn" title="Settings">Setting</button>
       <button id="btnPrev" class="topbtn" style="display:none">Prev Page</button>
       <button id="btnNext" class="topbtn">Next Page</button>
@@ -175,11 +183,43 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+    /* ========= helper: WS resolver (config.json -> ?ws -> localStorage) ========= */
+    async function resolveWS() {
+      const params = new URLSearchParams(location.search);
+      let url = params.get('ws') || localStorage.getItem('wsEndpoint');
+
+      if (!url) {
+        try {
+          const cfg = await fetch('./config.json?v=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+          url = cfg.ws;
+        } catch (e) {
+          console.warn('No config.json or cannot read:', e);
+        }
+      }
+      // enforce wss if serving over https
+      if (url && location.protocol === 'https:' && url.startsWith('ws://')) {
+        url = 'wss://' + url.slice('ws://'.length);
+      }
+      if (url) localStorage.setItem('wsEndpoint', url);
+      return url;
+    }
+
+    const liveBadge = document.getElementById('liveBadge');
+    function setLive(status, text){
+      liveBadge.classList.remove('ok','bad');
+      if(status==='ok'){ liveBadge.classList.add('ok'); liveBadge.textContent = 'LIVE: connected'; }
+      else if(status==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent = 'LIVE: disconnected'; }
+      else { liveBadge.textContent = text || 'LIVE: idle'; }
+      if(text) liveBadge.textContent = text;
+    }
+
+    /* =================== Diagnostics =================== */
     const diagEl = document.getElementById('diagText');
     const setDiag = (msg) => diagEl && (diagEl.textContent = msg);
     const gl = document.createElement('canvas').getContext('webgl') || document.createElement('canvas').getContext('experimental-webgl');
     if (!gl) { setDiag('WebGL ไม่พร้อม'); throw new Error('WebGL not available'); }
 
+    /* =================== Three setup =================== */
     const container = document.getElementById('container');
     const labelLayer = document.getElementById('labels');
     const scene = new THREE.Scene();
@@ -222,6 +262,7 @@
     const floorMat2 = new THREE.MeshStandardMaterial({ map: makeFloorTexture(140), metalness:0, roughness:0.9 });
     const wallMat   = new THREE.MeshStandardMaterial({ color: 0xe5ecf4, roughness:0.95 });
 
+    // Neon glow helpers
     const neonMats = [];
     function neonMaterial(color=0x54ff9f){
       const m = new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending });
@@ -250,6 +291,7 @@
       return {floor, walls:[n,s,e,wv]};
     }
 
+    /* =================== Pump model =================== */
     let labelPrefs = {}; try{ const raw=localStorage.getItem('labelPrefsV1'); if(raw) labelPrefs=JSON.parse(raw)||{}; }catch(e){}
     const saveLabelPrefs=()=>{ try{ localStorage.setItem('labelPrefsV1', JSON.stringify(labelPrefs)); }catch(e){} };
 
@@ -290,9 +332,9 @@
       impeller.rotation.z=Math.PI/2; impeller.position.set(0.95,0.62,0); g.add(impeller);
 
       const pipeMatOut=new THREE.MeshPhysicalMaterial({ color:0x60a5fa, metalness:0.1, roughness:0.25, transparent:true, opacity:0.5 });
-      const pipeMatIn =new THREE.MeshPhysicalMaterial({ color:0x34d399, metalness:0.1, roughness:0.25, transparent:true, opacity:0.5 });
+      const inletMat=new THREE.MeshPhysicalMaterial({ color:0x34d399, metalness:0.1, roughness:0.25, transparent:true, opacity:0.5 });
       const outlet=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.9,18), pipeMatOut); outlet.rotation.z=Math.PI/2; outlet.position.set(1.35,0.62,0); g.add(outlet);
-      const inlet =new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.7,18), new THREE.MeshPhysicalMaterial({ color:0x34d399, metalness:0.1, roughness:0.25, transparent:true, opacity:0.5 }));  inlet.rotation.z=Math.PI/2; inlet.position.set(0.55,0.62,0.48); inlet.rotation.y=0.35; g.add(inlet);
+      const inlet =new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.7,18), inletMat);  inlet.rotation.z=Math.PI/2; inlet.position.set(0.55,0.62,0.48); inlet.rotation.y=0.35; g.add(inlet);
 
       const flowArrow=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.18,16), new THREE.MeshStandardMaterial({ color:0x93c5fd, emissive:0x3b82f6, emissiveIntensity:1.2 }));
       flowArrow.rotation.z=-Math.PI/2; flowArrow.position.set(1.0,0.75,0);
@@ -321,7 +363,7 @@
       s.div.style.display='block'; s.div.style.left=((ndc.x*0.5+0.5)*rect.width + rect.left)+'px'; s.div.style.top=(( -ndc.y*0.5+0.5)*rect.height + rect.top)+'px';
     }
 
-    /* Data */
+    /* =================== Data / build floors =================== */
     const PLAN_ROOMS = [
       [ {x: -14, z:  5, w: 18, d:12},
         {x:   2, z:  5, w: 14, d:12},
@@ -336,7 +378,7 @@
         {x:  12, z: -6, w: 18, d:10}
       ]
     ];
-    const floors=[]; const pumpsAll=[];
+    const floors=[]; const pumpsAll=[]; // pumpsAll: {id,floor,roomObj,name,group}
 
     let roomNamesStore={};
     try{ const raw=localStorage.getItem('roomNamesV1'); if(raw) roomNamesStore=JSON.parse(raw)||{}; }catch(e){}
@@ -353,9 +395,11 @@
         floorGroup.userData.neonColor = (idx===0? 0x54ff9f : 0x7aa2ff);
         scene.add(floorGroup);
 
+        // caption 1F / 2F
         const cap=document.createElement('div'); cap.className='label'; cap.innerHTML=`<strong>${idx===0?'1F':'2F'}</strong>`; labelLayer.appendChild(cap);
         floorGroup.userData.label={div:cap, offset:new THREE.Vector3(0,3.2, -12)};
 
+        // slab
         const minX=Math.min(...rooms.map(r=>r.x-r.w/2))-2, maxX=Math.max(...rooms.map(r=>r.x+r.w/2))+2;
         const minZ=Math.min(...rooms.map(r=>r.z-r.d/2))-2, maxZ=Math.max(...rooms.map(r=>r.z+r.d/2))+2;
         const slab=new THREE.Mesh(new THREE.PlaneGeometry(maxX-minX, maxZ-minZ), floorGroup.userData.floorMat);
@@ -370,6 +414,7 @@
           const nameDiv=document.createElement('div'); nameDiv.className='label'; nameDiv.innerHTML=`<strong>${defName}</strong>`; labelLayer.appendChild(nameDiv);
           const namePos=new THREE.Vector3(r.x, 2.9, r.z);
           const roomObj={ id:`R${ri+1}`, cfg:r, name:defName, nameDiv, namePos, pumps:[] };
+
           const count = (r.w*r.d>260)?3:2;
           for(let i=0;i<count;i++){
             const name = `${floorId}-R${ri+1}-P${i+1}`;
@@ -406,14 +451,17 @@
       });
     }
 
+    /* =================== Simulation targets (fallback) =================== */
     function reseedTargets(){ pumpsAll.forEach(({group})=>{ const s=group.userData.state; if(s.enabled){ s.targetCurrent = 4 + Math.random()*8; s.targetFlow = 60 + Math.random()*150; } else { s.targetCurrent=0; s.targetFlow=0; } }); }
     reseedTargets();
 
+    /* =================== Side Panel =================== */
     const floorSwitches = document.getElementById('floorSwitches');
     const pumpList = document.getElementById('pumpList');
     const roomNamesEl = document.getElementById('roomNames');
 
     function rebuildPanel(){
+      // floors master
       floorSwitches.innerHTML='';
       floors.forEach(F=>{
         const row=document.createElement('div'); row.className='row';
@@ -423,6 +471,7 @@
         row.appendChild(cb); row.appendChild(label); floorSwitches.appendChild(row);
       });
 
+      // rooms/pumps
       pumpList.innerHTML='';
       floors.forEach(F=>{
         const det=document.createElement('details'); det.open=true; const sum=document.createElement('summary'); sum.textContent=F.id; det.appendChild(sum);
@@ -439,6 +488,7 @@
         pumpList.appendChild(det);
       });
 
+      // room name editor
       roomNamesEl.innerHTML='';
       floors.forEach(F=>{
         const wrap=document.createElement('div'); wrap.style.margin='6px 0';
@@ -466,6 +516,7 @@
     }
     rebuildPanel();
 
+    /* =================== Camera toggle =================== */
     const chkTopDown=document.getElementById('chkTopDown');
     chkTopDown.addEventListener('change',()=>{
       if(chkTopDown.checked){ camera.position.set(0, 130, 0.01); controls.target.set(0,0,0); }
@@ -475,7 +526,7 @@
     document.getElementById('btnReseed').addEventListener('click', reseedTargets);
     let run=true; document.getElementById('btnPause').addEventListener('click',()=>{ run=!run; document.getElementById('btnPause').textContent=run?'Pause':'Resume'; });
 
-    /* Interaction (pump popup) */
+    /* =================== Interaction (pump popup) =================== */
     const raycaster=new THREE.Raycaster(); const mouse=new THREE.Vector2();
     function pickPump(ev){ const r=renderer.domElement.getBoundingClientRect(); mouse.x=((ev.clientX-r.left)/r.width)*2-1; mouse.y=-((ev.clientY-r.top)/r.height)*2+1; raycaster.setFromCamera(mouse,camera);
       const objs = pumpsAll.map(p=>p.group); const i=raycaster.intersectObjects(objs,true); if(!i.length) return null; let obj=i[0].object; while(obj.parent && !objs.includes(obj)) obj=obj.parent; return obj; }
@@ -522,7 +573,7 @@
     window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ pumpInfoVisible=false; pumpInfo.style.display='none'; activePump=null; }});
     renderer.domElement.addEventListener('dblclick',(ev)=>{ const obj=pickPump(ev); if(obj){ const target=new THREE.Vector3(); obj.getWorldPosition(target); controls.target.copy(target); }});
 
-    /* Status / Settings / AI */
+    /* =================== Status / Settings / AI =================== */
     const statusPage=document.getElementById('statusPage');
     const btnNext=document.getElementById('btnNext');
     const btnPrev=document.getElementById('btnPrev');
@@ -614,7 +665,8 @@
       });
       const tbody = document.querySelector('#statusTable tbody');
       if(tbody){
-        Array.from(tbody.querySelectorAll('tr')).forEach(tr=> tr.className='');
+        Array.from(tbody.querySelectorAll('tr')).forEach(tr=> tr.className='';
+        );
         enabled.forEach(r=>{
           const tr=tbody.querySelector(`tr[data-id="${r.id}"]`);
           if(!tr) return;
@@ -644,7 +696,7 @@
     aiClose.addEventListener('click', ()=> aiReport.style.display='none');
     aiReport.addEventListener('click', (e)=>{ if(e.target===aiReport) aiReport.style.display='none'; });
 
-    /* Collapsible panel logic */
+    /* =================== Collapsible panel =================== */
     const panel = document.getElementById('panel');
     const panelToggle = document.getElementById('panelToggle');
     let panelOpen = true;
@@ -666,74 +718,32 @@
     window.addEventListener('keydown', (e)=>{ if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='b'){ panelOpen=!panelOpen; localStorage.setItem('panelOpenV1', JSON.stringify(panelOpen)); applyPanelState(); }});
     applyPanelState();
 
-    /* ===== Live data via WebSocket (Method 2: GitHub Pages + Tunnel) ===== */
-    const qs = new URLSearchParams(location.search);
-    const wsParam = qs.get('ws');                       // เช่น wss://xxxxx.trycloudflare.com/ws/pumps/05022526 (จะ encode หรือไม่ก็ได้)
-    const DEFAULT_WS_PATH = '/ws/pumps/05022526';
-    const WS_URL = wsParam
-      ? decodeURIComponent(wsParam)
-      : ((location.protocol==='https:' ? 'wss://' : 'ws://') + location.host + DEFAULT_WS_PATH);
-
-    const LIVE = { connected:false, last:0, count:0 };
-    function updateLiveDiag(){
-      const el = document.getElementById('diagText');
-      const age = LIVE.last ? Math.round((Date.now()-LIVE.last)/1000) : '-';
-      if (el) el.textContent = LIVE.connected
-        ? `LIVE: connected • last ${age}s • msgs ${LIVE.count}`
-        : 'LIVE: disconnected';
-    }
-    function applyLiveItem(msg){
-      const id = msg.id || msg.name || msg.pumpId;
-      if(!id) return;
-      const rec = (pumpsAll||[]).find(p => p.id===id || p.name===id);
-      if(!rec) return;
-      const s = rec.group.userData.state;
-      if (typeof msg.enabled === 'boolean') s.enabled = msg.enabled;
-      if (msg.amp  != null) s.targetCurrent = Number(msg.amp)  || 0;
-      if (msg.flow != null) s.targetFlow    = Number(msg.flow) || 0;
-      s.lastUpdate = Date.now();
-    }
-    function handleWSMessage(ev){
-      let data; try{ data = JSON.parse(ev.data); }catch(e){ return; }
-      (Array.isArray(data) ? data : [data]).forEach(applyLiveItem);
-      LIVE.count++; LIVE.last = Date.now(); updateLiveDiag();
-    }
-    (function connectWS(){
-      try{
-        const ws = new WebSocket(WS_URL);
-        ws.addEventListener('open',  ()=>{ LIVE.connected = true;  updateLiveDiag(); });
-        ws.addEventListener('close', ()=>{ LIVE.connected = false; updateLiveDiag(); setTimeout(connectWS, 1500 + Math.random()*1000); });
-        ws.addEventListener('error', ()=>{ /* ignore */ });
-        ws.addEventListener('message', handleWSMessage);
-      }catch(e){
-        LIVE.connected = false; updateLiveDiag();
-        setTimeout(connectWS, 2000);
-      }
-    })();
-    updateLiveDiag();
-
-    /* Optional: CSV export (ปุ่ม Export CSV ใช้งานได้) */
+    /* =================== CSV export helpers =================== */
     function csvEscape(v){ if(v==null) return ''; const s=String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }
     function buildCSV(rows, header){ const head=header.join(','); const lines=rows.map(r=> header.map(h=> csvEscape(r[h])).join(',')); return [head].concat(lines).join('\n'); }
-    btnExport.addEventListener('click', ()=>{
+    document.getElementById('btnExport').addEventListener('click', ()=>{
       const rows = rowsSnapshot().map(r=>({
-        id:r.id, floor:r.floor, room:r.room, name:r.name,
-        state:r.enabled?'ON':'OFF',
+        id:r.id, floor:r.floor, room:r.room, name:r.name, state:(r.enabled?'ON':'OFF'),
         amp:r.amp.toFixed(2), flow:r.flow.toFixed(0)
       }));
       const csv = buildCSV(rows, ['id','floor','room','name','state','amp','flow']);
       const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href=url; a.download='pumps_status.csv'; a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pumps-status.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
     });
 
-    /* Animate */
+    /* =================== Animate loop =================== */
     const lerp=(a,b,t)=>a+(b-a)*t; let last=performance.now();
     function animate(now){ requestAnimationFrame(animate); const dt=Math.min(0.1,(now-last)/1000); last=now;
-      pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
-        if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
-        renderPumpLabel(s); group.userData.tick(dt); });
+      if(run){
+        pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
+          if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
+          renderPumpLabel(s); group.userData.tick(dt);
+        });
+      }
       neonMats.forEach(m=>{ m.opacity = 0.55 + 0.35*Math.sin(now*0.004 + (m.userData?.phase||0)); });
       controls.update(); renderer.render(scene,camera);
       floors.forEach(F=>F.pumps.forEach(updatePumpLabel)); updateFloorLabels(); updateRoomNameLabels();
@@ -743,6 +753,65 @@
     animate(performance.now());
 
     window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
+
+    /* =================== LIVE WebSocket =================== */
+    const WS_URL = await resolveWS();
+    let ws, wsTimer, backoff = 2000;
+
+    function updateWSIndicator(){
+      if(ws && ws.readyState===1){ setLive('ok'); }
+      else { setLive('bad'); }
+    }
+
+    function applyUpdate(msg){
+      // msg: {id, amp, flow, enabled} OR array of those
+      if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
+      const m = msg && typeof msg==='object' ? msg : null;
+      if(!m || typeof m.id!=='string') return;
+      const rec = pumpsAll.find(p => p.id === m.id);
+      if(!rec) return;
+      const s = rec.group.userData.state;
+      if(typeof m.enabled === 'boolean') s.enabled = m.enabled;
+      if(typeof m.amp === 'number') s.targetCurrent = m.amp;
+      if(typeof m.flow === 'number') s.targetFlow = m.flow;
+    }
+
+    function connectWS(){
+      if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
+      try{
+        ws = new WebSocket(WS_URL);
+      }catch(e){
+        console.warn('WS construct error', e);
+        setLive('bad');
+        return;
+      }
+      ws.onopen = ()=>{
+        backoff = 2000;
+        setLive('ok');
+        console.log('WS connected:', WS_URL);
+      };
+      ws.onmessage = (ev)=>{
+        try{
+          const data = JSON.parse(ev.data);
+          applyUpdate(data);
+        }catch(e){
+          console.warn('WS message parse failed', e);
+        }
+      };
+      ws.onclose = ()=>{
+        setLive('bad');
+        console.warn('WS closed, retry in', backoff, 'ms');
+        clearTimeout(wsTimer);
+        wsTimer = setTimeout(connectWS, backoff);
+        backoff = Math.min(backoff * 1.8, 20000);
+      };
+      ws.onerror = (e)=>{
+        console.warn('WS error', e);
+      };
+    }
+    connectWS();
+    setInterval(updateWSIndicator, 1000);
+
   </script>
 </body>
 </html>
