@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pumps Gauges • Ranhill IIoT 3D</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:rgba(3,8,23,.86); --text:#e5e7eb; --muted:#94a3b8;
+      --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --accent:#93c5fd;
+      --ring:#1f2937;
+    }
+    *{box-sizing:border-box} html,body{height:100%;margin:0}
+    body{background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);
+         font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+         color:var(--text);}
+    /* Topbar */
+    #topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+      gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);border-bottom:1px solid rgba(148,163,184,.18)}
+    #brand{font-weight:800;letter-spacing:.3px}
+    .actions{display:flex;gap:8px;align-items:center}
+    .btn{border:0;padding:8px 12px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+    #liveBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:transparent;border:1px solid rgba(148,163,184,.35);color:#cbd5e1}
+    #liveBadge.ok{color:var(--ok);border-color:var(--ok)}
+    #liveBadge.bad{color:var(--bad);border-color:var(--bad)}
+    /* Filters */
+    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
+    select,input[type="search"]{background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
+      border-radius:10px;padding:8px 10px}
+    /* Grid */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:10px 16px 28px}
+    .card{background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:12px 12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.32);}
+    .card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .id{font-weight:700}
+    .sub{font-size:12px;color:var(--muted)}
+    .status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.28);}
+    .on{color:var(--ok);border-color:var(--ok)} .off{color:var(--bad);border-color:var(--bad)}
+    .gwrap{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:6px}
+    .gauge{--p:0; --clr:var(--accent); width:92px; height:92px; border-radius:50%;
+      background:conic-gradient(var(--clr) calc(var(--p)*1%), #243042 0);
+      display:grid; place-items:center; position:relative; box-shadow:inset 0 0 0 10px var(--ring);}
+    .gauge::after{content:""; position:absolute; inset:8px; background:#0b1220; border-radius:50%}
+    .gauge .v{position:relative; font-weight:800}
+    .gauge .u{position:relative; font-size:11px; color:var(--muted)}
+    .kpi{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .kv{background:#0c172a;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:8px}
+    .kv .k{font-size:11px;color:#a7b0bf} .kv .v{font-weight:700}
+    .crit-ok{outline:2px solid rgba(34,197,94,.3)} .crit-warn{outline:2px solid rgba(251,191,36,.28)} .crit-bad{outline:2px solid rgba(239,68,68,.28)}
+    .muted{color:var(--muted); font-size:12px}
+    footer{padding:8px 16px 16px;color:#9aa3b2;font-size:12px}
+  </style>
+</head>
+<body>
+  <script>
+  // Session guard
+  (function(){
+    try{
+      const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
+      if(!s || !s.exp || Date.now() > s.exp){
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        location.replace('./login.html?next=' + next);
+      }
+    }catch(e){
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.replace('./login.html?next=' + next);
+    }
+  })();
+  </script>
+
+  <div id="topbar">
+    <div id="brand">RANHILL • Pumps Gauges</div>
+    <div class="actions">
+      <span id="liveBadge">LIVE: idle</span>
+      <button class="btn" id="btnBack">Back to 3D</button>
+      <button class="btn" id="btnLogout">Logout</button>
+    </div>
+  </div>
+
+  <div id="filters">
+    <select id="fFloor">
+      <option value="">ทุกชั้น</option>
+      <option>F1</option>
+      <option>F2</option>
+    </select>
+    <select id="fRoom"><option value="">ทุกห้อง</option></select>
+    <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1">
+    <span class="muted">* ค่า Amp/Flow อัปเดตแบบเรียลไทม์จาก WebSocket</span>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <footer><span class="muted">แสดงเกจ Amp (A) และ Flow (L/min) ของปั๊มทุกตัว • โหมดอ่านค่า ไม่หมุน 3D</span></footer>
+
+  <script type="module">
+    /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
+    async function resolveWS(){
+      const params = new URLSearchParams(location.search);
+      let url = params.get('ws') || localStorage.getItem('wsEndpoint');
+      if(!url){
+        try{
+          const cfg = await fetch('./config.json?v='+Date.now(), {cache:'no-store'}).then(r=>r.json());
+          url = cfg.ws;
+        }catch(e){ console.warn('No/Bad config.json', e); }
+      }
+      if(url && location.protocol==='https:' && url.startsWith('ws://')){
+        url = 'wss://' + url.slice(5);
+      }
+      if(url) localStorage.setItem('wsEndpoint', url);
+      return url;
+    }
+
+    /* ---------- Pump layout mirror (match 3D page) ---------- */
+    const PLAN_ROOMS=[
+      [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
+      [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
+    ];
+    const FLOORS = [];
+    PLAN_ROOMS.forEach((rooms,idx)=>{
+      const floorId= idx===0? 'F1':'F2';
+      const floor={id:floorId, rooms:[]};
+      rooms.forEach((r,ri)=>{
+        const count=(r.w*r.d>260)?3:2;
+        const room={id:`R${ri+1}`, pumps:[]};
+        for(let i=0;i<count;i++){
+          const id=`${floorId}-R${ri+1}-P${i+1}`;
+          room.pumps.push(id);
+        }
+        floor.rooms.push(room);
+      });
+      FLOORS.push(floor);
+    });
+
+    /* ---------- UI ---------- */
+    const grid = document.getElementById('grid');
+    const liveBadge = document.getElementById('liveBadge');
+    const fFloor = document.getElementById('fFloor');
+    const fRoom  = document.getElementById('fRoom');
+    const fText  = document.getElementById('fText');
+
+    function allRoomsOf(floorId){
+      const floor = FLOORS.find(f=>f.id===floorId);
+      return floor ? floor.rooms.map(r=>r.id) : [];
+    }
+    function rebuildRoomFilter(){
+      const v = fFloor.value;
+      const rooms = v ? allRoomsOf(v) : FLOORS.flatMap(f=>f.rooms.map(r=>r.id));
+      fRoom.innerHTML = '<option value="">ทุกห้อง</option>' + rooms.map(r=>`<option>${r}</option>`).join('');
+    }
+    fFloor.addEventListener('change', ()=>{ rebuildRoomFilter(); render(); });
+    fRoom .addEventListener('change', render);
+    fText .addEventListener('input', render);
+    rebuildRoomFilter();
+
+    function cardHTML(id){
+      // id format F1-R1-P1
+      const [floor, room] = id.split('-').slice(0,2);
+      return `<div class="card" id="card-${id}">
+        <div class="head">
+          <div>
+            <div class="id">${id}</div>
+            <div class="sub">${floor}/${room}</div>
+          </div>
+          <span class="status" id="st-${id}">—</span>
+        </div>
+        <div class="gwrap">
+          <div>
+            <div class="gauge" id="ga-${id}" style="--p:0; --clr:#93c5fd;">
+              <div class="v" id="gav-${id}">0.0</div>
+              <div class="u">Amp</div>
+            </div>
+          </div>
+          <div>
+            <div class="gauge" id="gf-${id}" style="--p:0; --clr:#22c55e;">
+              <div class="v" id="gfv-${id}">0</div>
+              <div class="u">Flow</div>
+            </div>
+          </div>
+          <div class="kpi">
+            <div class="kv"><div class="k">สถานะ</div><div class="v" id="kv-run-${id}">—</div></div>
+            <div class="kv"><div class="k">สุขภาพ</div><div class="v" id="kv-hlth-${id}">—</div></div>
+            <div class="kv"><div class="k">Amp (A)</div><div class="v" id="kv-amp-${id}">0.0</div></div>
+            <div class="kv"><div class="k">Flow (L/min)</div><div class="v" id="kv-flow-${id}">0</div></div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const PUMP_IDS = FLOORS.flatMap(f=> f.rooms.flatMap(r=> r.pumps));
+    function render(){
+      const q = (fText.value||'').trim().toLowerCase();
+      const ff = fFloor.value, rr = fRoom.value;
+      const ids = PUMP_IDS.filter(id=>{
+        if(q && !id.toLowerCase().includes(q)) return false;
+        if(ff && !id.startsWith(ff+'-')) return false;
+        if(rr && !id.includes('-'+rr+'-')) return false;
+        return true;
+      });
+      grid.innerHTML = ids.map(cardHTML).join('');
+      // Repaint with current state
+      ids.forEach(id=> applyStateToCard(id, state[id]||null));
+    }
+
+    /* ---------- State & paint ---------- */
+    const AMP_MAX = 15, FLOW_MAX = 220;
+    const state = {}; // id -> {enabled, amp, flow, health}
+    function classify(s){
+      if(!s || !s.enabled) return 'OFF';
+      const overCurr = (s.amp>10);
+      const lowFlow  = (s.flow<80);
+      if(overCurr && lowFlow) return 'BAD';
+      if(overCurr || s.amp>8 || s.flow<100) return 'WARN';
+      return 'OK';
+    }
+    function pct(v,max){ return Math.max(0, Math.min(100, (v/max)*100)); }
+    function setGauge(el, val, max){
+      if(!el) return;
+      el.style.setProperty('--p', pct(val,max).toFixed(2));
+    }
+    function applyStateToCard(id, s){
+      const card = document.getElementById('card-'+id);
+      if(!card) return;
+      const st = document.getElementById('st-'+id);
+      const run = document.getElementById('kv-run-'+id);
+      const hl  = document.getElementById('kv-hlth-'+id);
+      const ka  = document.getElementById('kv-amp-'+id);
+      const kf  = document.getElementById('kv-flow-'+id);
+      const ga  = document.getElementById('ga-'+id);
+      const gf  = document.getElementById('gf-'+id);
+      const gav = document.getElementById('gav-'+id);
+      const gfv = document.getElementById('gfv-'+id);
+
+      if(!s){
+        st.textContent='—'; st.className='status';
+        run.textContent='—'; hl.textContent='—'; ka.textContent='0.0'; kf.textContent='0';
+        setGauge(ga,0,AMP_MAX); setGauge(gf,0,FLOW_MAX); gav.textContent='0.0'; gfv.textContent='0';
+        card.classList.remove('crit-ok','crit-warn','crit-bad');
+        return;
+      }
+      st.textContent = s.enabled? 'ON':'OFF';
+      st.className = 'status ' + (s.enabled? 'on':'off');
+      run.textContent = s.enabled? 'RUN':'STOP';
+      ka.textContent = (s.amp||0).toFixed(1);
+      kf.textContent = Math.round(s.flow||0);
+      gav.textContent= (s.amp||0).toFixed(1);
+      gfv.textContent= Math.round(s.flow||0);
+      setGauge(ga, s.amp||0, AMP_MAX);
+      setGauge(gf, s.flow||0, FLOW_MAX);
+      const sev = classify(s);
+      hl.textContent = (sev==='OK'?'ปกติ':sev==='WARN'?'เตือน':sev==='BAD'?'ผิดปกติ':'ปิด');
+      card.classList.remove('crit-ok','crit-warn','crit-bad');
+      if(sev==='OK') card.classList.add('crit-ok');
+      else if(sev==='WARN') card.classList.add('crit-warn');
+      else if(sev==='BAD') card.classList.add('crit-bad');
+    }
+
+    /* ---------- WS live ---------- */
+    const btnBack = document.getElementById('btnBack');
+    btnBack.addEventListener('click', ()=>{
+      location.href = './ranhill_iiot_scada3d_with_logout.html';
+    });
+    document.getElementById('btnLogout').addEventListener('click', ()=>{
+      try{ localStorage.removeItem('sessionV1'); }catch(e){}
+      const next = encodeURIComponent('./pumps_gauges.html');
+      location.href = './login.html?next=' + next;
+    });
+
+    const WS_URL = await resolveWS();
+    console.log('WS endpoint:', WS_URL);
+    let ws, wsTimer, backoff=2000;
+
+    function setLive(state,text){
+      liveBadge.classList.remove('ok','bad');
+      if(state==='ok'){ liveBadge.classList.add('ok'); liveBadge.textContent='LIVE: connected'; }
+      else if(state==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent='LIVE: disconnected'; }
+      else liveBadge.textContent = text || 'LIVE: idle';
+    }
+    function applyUpdate(msg){
+      if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
+      const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
+      if(!(m.id in state)) state[m.id] = {enabled:true, amp:0, flow:0, health:'OK'};
+      if(typeof m.enabled==='boolean') state[m.id].enabled = m.enabled;
+      if(typeof m.amp==='number') state[m.id].amp = m.amp;
+      if(typeof m.flow==='number') state[m.id].flow = m.flow;
+      applyStateToCard(m.id, state[m.id]);
+    }
+    function connectWS(){
+      if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
+      try{ ws=new WebSocket(WS_URL); }catch(e){ console.warn('WS construct error',e); setLive('bad'); return; }
+      ws.onopen=()=>{ backoff=2000; setLive('ok'); console.log('WS connected'); };
+      ws.onmessage=(ev)=>{ try{ const data=JSON.parse(ev.data); applyUpdate(data); }catch(e){ console.warn('WS parse fail',e); } };
+      ws.onclose =()=>{ setLive('bad'); clearTimeout(wsTimer); wsTimer=setTimeout(connectWS, backoff); backoff=Math.min(backoff*1.8, 20000); };
+      ws.onerror =(e)=> console.warn('WS error', e);
+    }
+    connectWS(); setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
