@@ -90,6 +90,7 @@
       <button id="btnSettings" class="topbtn" title="Settings">Setting</button>
       <button id="btnPrev" class="topbtn" style="display:none">Prev Page</button>
       <button id="btnLogout" class="topbtn" title="Logout">Logout</button>
+      <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <button id="btnNext" class="topbtn">Next Page</button>
     </div>
   </div>
@@ -568,6 +569,15 @@
       btnNext.addEventListener('click',()=>{ statusPage.style.display='block'; btnNext.style.display='none'; btnPrev.style.display='inline-block'; updateStatusTable(); });
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
+      // Gauges button -> pumps_gauges.html (carry ?ws= if present)
+      const btnGauges = document.getElementById('btnGauges');
+      btnGauges?.addEventListener('click', ()=>{
+        const q = new URLSearchParams(location.search);
+        const ws = q.get('ws');
+        const target = './pumps_gauges.html' + (ws ? ('?ws=' + encodeURIComponent(ws)) : '');
+        location.href = target;
+      });
+
       const btnLogout=document.getElementById('btnLogout');
       btnLogout?.addEventListener('click',()=>{
         try{ localStorage.removeItem('sessionV1'); }catch(e){}
