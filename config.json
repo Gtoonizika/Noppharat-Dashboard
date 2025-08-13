@@ -1,3 +1,15 @@
 {
-  "ws": "wss://adventures-subaru-bow-prayers.trycloudflare.com/ws/pumps/05022526"
+  "ws": "wss://adventures-subaru-bow-prayers.trycloudflare.com/ws/pumps/05022526",
+  "auth": {
+    "users": [
+      {
+        "user": "admin",
+        "hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+      },
+      {
+        "user": "viewer",
+        "pass": "1234"
+      }
+    ]
+  }
 }
