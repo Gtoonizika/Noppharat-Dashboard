@@ -4,7 +4,7 @@
     "users": [
       { "user": "admin",  "hash": "22c4fdac80e54093b7e35ed31409218e4e7296593e95fcd52b4dc8145dcda563" },
       { "user": "viewer1","hash": "1cf45cdccb774bc214bf5f37928299d895022703352946f9f753be49a640d918" },
-      { "anurak": "viewer1","hash": "7619ee8cea49187f309616e30ecf54be072259b43760f1f550a644945d5572f2" }
+      { "user": "anurak","hash": "7619ee8cea49187f309616e30ecf54be072259b43760f1f550a644945d5572f2" }
     ]
   }
 }
