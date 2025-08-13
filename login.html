@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login • Ranhill IIoT 3D</title>
+  <style>
+    :root{ --bg:#0b1220; --card:rgba(3,8,23,.82); --text:#e5e7eb; --muted:#94a3b8; --accent:#93c5fd; --ok:#86efac; --warn:#fbbf24; --bad:#f87171; }
+    *{box-sizing:border-box} html,body{height:100%;margin:0}
+    body{
+      background: radial-gradient(1200px 800px at 20% 10%, #0d1630, #0b1220 60%), var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: var(--text);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{
+      width:100%; max-width:420px; background:var(--card);
+      border:1px solid rgba(148,163,184,.25); border-radius:16px; padding:20px 18px 18px;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+    }
+    .brand{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+    .logo{width:38px; height:38px; border-radius:10px; background:linear-gradient(150deg,#2563eb,#22c55e); box-shadow:0 6px 18px rgba(0,0,0,.35)}
+    .brand h1{margin:0; font-size:18px; letter-spacing:.3px}
+    .muted{color:var(--muted); font-size:13px}
+    label{display:block; font-size:13px; color:#cbd5e1; margin:8px 0 6px}
+    input[type="text"], input[type="password"]{
+      width:100%; background:#0f172a; color:var(--text); border:1px solid rgba(148,163,184,.35);
+      border-radius:10px; padding:10px 12px; outline:none;
+    }
+    .row{display:flex; gap:10px}
+    .pwd{position:relative}
+    .pwd button{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:#0b1220; color:#cbd5e1; border:1px solid rgba(148,163,184,.3);
+      padding:4px 8px; border-radius:8px; cursor:pointer;
+    }
+    .actions{display:flex; align-items:center; justify-content:space-between; margin-top:10px}
+    .btn{
+      border:0; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+      background:#1f2937; color:var(--text); box-shadow:0 6px 18px rgba(0,0,0,.3);
+    }
+    .btn.primary{background:#2563eb}
+    .hint{margin-top:10px; font-size:12px; color:var(--muted)}
+    .err{margin-top:8px; font-size:13px; color:var(--bad)}
+    .ok{color:var(--ok)}
+    .footer{margin-top:14px; display:flex; justify-content:space-between; align-items:center}
+    .footer .small{font-size:12px; color:#9ca3af}
+    .dev{margin-top:10px; border-top:1px dashed rgba(148,163,184,.2); padding-top:10px}
+    details summary{cursor:pointer; color:#cbd5e1}
+    .remember{display:flex; align-items:center; gap:6px; font-size:13px; color:#cbd5e1}
+    a{color:#93c5fd; text-decoration:none}
+    a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>RANHILL IIoT 3D • Login</h1>
+    </div>
+    <p class="muted">กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้า Dashboard</p>
+
+    <label for="user">ชื่อผู้ใช้</label>
+    <input id="user" type="text" placeholder="เช่น admin" autocomplete="username">
+
+    <label for="pass">รหัสผ่าน</label>
+    <div class="pwd">
+      <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      <button id="togglePwd" type="button" title="แสดง/ซ่อนรหัสผ่าน">แสดง</button>
+    </div>
+
+    <div class="actions">
+      <label class="remember">
+        <input type="checkbox" id="remember"> จำสถานะการเข้าสู่ระบบ
+      </label>
+      <button class="btn primary" id="btnLogin">เข้าสู่ระบบ</button>
+    </div>
+
+    <div id="msg" class="err"></div>
+    <div class="hint" id="hint">* ถ้าไม่มีไฟล์ <code>config.json</code> จะใช้ค่าทดสอบ: <b>admin / 1234</b></div>
+
+    <div class="footer">
+      <span class="small">© 2025 Noppharat</span>
+      <a href="#" id="helpLink">วิธีตั้งค่า</a>
+    </div>
+
+    <div class="dev">
+      <details>
+        <summary>เครื่องมือ Dev (สร้าง SHA-256 hash)</summary>
+        <div style="margin-top:8px">
+          <input id="hashInput" type="text" placeholder="ใส่รหัสที่ต้องการแฮช">
+          <button class="btn" id="btnHash" type="button">แฮช</button>
+          <div id="hashOut" class="hint"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    const msg = $('msg');
+    const userEl = $('user');
+    const passEl = $('pass');
+    const rememberEl = $('remember');
+    const nextUrl = new URLSearchParams(location.search).get('next') || './ranhill_iiot_scada3d_no_grid_fix.html';
+
+    $('togglePwd').addEventListener('click', ()=>{
+      passEl.type = passEl.type === 'password' ? 'text' : 'password';
+      $('togglePwd').textContent = passEl.type === 'password' ? 'แสดง' : 'ซ่อน';
+    });
+
+    $('helpLink').addEventListener('click', (e)=>{
+      e.preventDefault();
+      alert(
+`วิธีตั้งค่าผู้ใช้:
+1) สร้างไฟล์ config.json ไว้โฟลเดอร์เดียวกับหน้าเว็บ โดยใส่ข้อมูลดังนี้:
+{
+  "ws": "ws://YOUR_WS_ENDPOINT",
+  "auth": {
+    "users": [
+      {"user":"admin","hash":"<วางค่า SHA-256 ที่สร้างจากเครื่องมือ Dev>"},
+      {"user":"viewer","pass":"1234"}
+    ]
+  }
+}
+2) อัปโหลดขึ้น Netlify/Cloudflare (หรือรันผ่าน HTTP server) เพื่อให้ fetch() อ่านไฟล์ได้
+3) เพิ่มโค้ดตรวจ session ในหน้า Dashboard ให้เด้งไปหน้า Login เมื่อยังไม่ได้ล็อกอิน (มีตัวอย่างในข้อความแชทจากบอท)`);
+    });
+
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // Dev hash tool
+    $('btnHash').addEventListener('click', async ()=>{
+      const t = $('hashInput').value || '';
+      const h = await sha256Hex(t);
+      $('hashOut').innerHTML = '<span class="ok">SHA-256:</span> <code>'+h+'</code>';
+      navigator.clipboard?.writeText(h).catch(()=>{});
+    });
+
+    async function loadAuth(){
+      try{
+        const cfg = await fetch('./config.json?v='+Date.now(), {cache:'no-store'}).then(r=>r.json());
+        const users = cfg?.auth?.users;
+        if(Array.isArray(users) && users.length){
+          return users;
+        }
+      }catch(e){
+        // ignore; will use fallback
+      }
+      // fallback demo credential
+      return [{user:'admin', pass:'1234'}];
+    }
+
+    function setError(t){ msg.textContent = t || ''; }
+    function randStr(n=24){
+      const chars='abcdefghijklmnopqrstuvwxyz0123456789'; let s='';
+      for(let i=0;i<n;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+      return s;
+    }
+
+    async function tryLogin(){
+      setError('');
+      const u = userEl.value.trim();
+      const p = passEl.value;
+      if(!u || !p){ setError('กรุณากรอกข้อมูลให้ครบ'); return; }
+
+      const users = await loadAuth();
+
+      // find user
+      const rec = users.find(x => (x.user||'').toLowerCase() === u.toLowerCase());
+      if(!rec){
+        setError('ไม่พบบัญชีผู้ใช้');
+        return;
+      }
+      let ok = false;
+      if(typeof rec.hash === 'string'){
+        const hh = await sha256Hex(p);
+        ok = (hh === rec.hash.toLowerCase());
+      }else if(typeof rec.pass === 'string'){
+        ok = (p === rec.pass);
+      }
+
+      if(!ok){
+        setError('รหัสผ่านไม่ถูกต้อง');
+        return;
+      }
+
+      // login ok -> store session
+      const hours = rememberEl.checked ? 24*30 : 8;
+      const exp = Date.now() + hours*60*60*1000;
+      const token = randStr();
+      localStorage.setItem('sessionV1', JSON.stringify({user:u, token, exp}));
+
+      // redirect
+      location.href = nextUrl;
+    }
+
+    $('btnLogin').addEventListener('click', tryLogin);
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        tryLogin();
+      }
+    });
+
+    // Autofocus
+    setTimeout(()=>userEl.focus(), 50);
+  </script>
+</body>
+</html>
