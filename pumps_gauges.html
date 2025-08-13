@@ -252,17 +252,33 @@
       else if(sev==='BAD') card.classList.add('crit-bad');
     }
 
-    /* ---------- WS live ---------- */
+    /* ---------- Back & Logout ---------- */
     const btnBack = document.getElementById('btnBack');
     btnBack.addEventListener('click', ()=>{
-      location.href = './ranhill_iiot_scada3d_with_logout.html';
+      // Prefer going back if we came from the 3D page in the same origin
+      const ref = document.referrer;
+      try{
+        if(ref && new URL(ref).origin === location.origin){
+          history.back();
+          return;
+        }
+      }catch(e){}
+      // Fallback: go to remembered home3D or index.html, preserving ?ws=
+      const q = new URLSearchParams(location.search);
+      const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+      const home = localStorage.getItem('home3D') || './index.html';
+      const url = new URL(home, location.href);
+      if(ws) url.searchParams.set('ws', ws);
+      location.href = url.pathname + url.search;
     });
+
     document.getElementById('btnLogout').addEventListener('click', ()=>{
       try{ localStorage.removeItem('sessionV1'); }catch(e){}
       const next = encodeURIComponent('./pumps_gauges.html');
       location.href = './login.html?next=' + next;
     });
 
+    /* ---------- WS live ---------- */
     const WS_URL = await resolveWS();
     console.log('WS endpoint:', WS_URL);
     let ws, wsTimer, backoff=2000;
