@@ -4,62 +4,84 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pumps Gauges • Ranhill IIoT 3D</title>
+
+  <!-- กัน 404 favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%230ea5e9'/%3E%3Ctext x='8' y='11' text-anchor='middle' font-size='9' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+
   <style>
     :root{
       --bg:#0b1220; --card:rgba(3,8,23,.86); --text:#e5e7eb; --muted:#94a3b8;
       --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --accent:#93c5fd; --ring:#1f2937;
-      --tile:#0c172a; --halo:rgba(147,197,253,.35);
+      --chip:#0f172a;
     }
-    *{box-sizing:border-box} html,body{height:100%;margin:0}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
     body{
       background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);
       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
       color:var(--text);
     }
-    #topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
+
+    /* Topbar */
+    #topbar{
+      position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
       gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);
-      border-bottom:1px solid rgba(148,163,184,.18)}
+      border-bottom:1px solid rgba(148,163,184,.18)
+    }
     #brand{font-weight:800;letter-spacing:.3px}
     .actions{display:flex;gap:8px;align-items:center}
     .btn{border:0;padding:8px 12px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28)}
-    .iconbtn{border:0;background:#111827;color:#cbd5e1;border-radius:8px;padding:6px 8px;cursor:pointer}
     #liveBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:transparent;border:1px solid rgba(148,163,184,.35);color:#cbd5e1}
     #liveBadge.ok{color:var(--ok);border-color:var(--ok)}
     #liveBadge.bad{color:var(--bad);border-color:var(--bad)}
-    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;align-items:center}
+
+    /* Filters */
+    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
     select,input[type="search"]{background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
       border-radius:10px;padding:8px 10px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;padding:10px 16px 28px}
-    .card{background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.32);}
-    .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+
+    /* Grid & Card */
+    .grid{
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:12px 16px 28px
+    }
+    .card{
+      background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;
+      padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.32);
+    }
+    .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
     .id{font-weight:700}
     .sub{font-size:12px;color:var(--muted)}
-    .status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.28);}
+    .status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.28);background:var(--chip)}
     .on{color:var(--ok);border-color:var(--ok)} .off{color:var(--bad);border-color:var(--bad)}
-    .gwrap{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-top:6px}
-    .kpi{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;min-width:160px}
-    .kv{background:var(--tile);border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:8px}
-    .kv .k{font-size:11px;color:#a7b0bf} .kv .v{font-weight:700;word-break:break-word}
-    .crit-ok{outline:2px solid rgba(34,197,94,.3)} .crit-warn{outline:2px solid rgba(251,191,36,.28)} .crit-bad{outline:2px solid rgba(239,68,68,.28)}
+    .gear{border:0;background:#0f172a;color:#cbd5e1;border-radius:8px;padding:4px 8px;cursor:pointer;margin-left:8px}
+
+    .gwrap{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-top:6px}
+    /* gauge block takes a bit more width so KPIs don’t overflow */
+    .gblock{display:flex;flex-direction:column;align-items:center;gap:6px}
+
+    /* KPI layout widened to 3 cols soไม่ล้น */
+    .kpi{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:flex-start}
+    .kv{background:#0c172a;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:8px;min-height:54px}
+    .kv .k{font-size:11px;color:#a7b0bf} .kv .v{font-weight:700}
+
+    .crit-ok{outline:2px solid rgba(34,197,94,.30)}
+    .crit-warn{outline:2px solid rgba(251,191,36,.28)}
+    .crit-bad{outline:2px solid rgba(239,68,68,.28)}
+
     .muted{color:var(--muted); font-size:12px}
     footer{padding:8px 16px 16px;color:#9aa3b2;font-size:12px}
-    .gaugeB{--clr:#93c5fd; width:140px;height:110px;position:relative}
-    .gaugeB svg{width:140px;height:110px;display:block}
-    .gaugeB .bg{stroke:#2b3746;fill:none;stroke-width:14;stroke-linecap:round;opacity:.9}
-    .gaugeB .fg{stroke:var(--clr);fill:none;stroke-width:14;stroke-linecap:round;filter:drop-shadow(0 0 8px var(--halo));transition:stroke-dashoffset .25s ease-out}
-    .gaugeB .center{position:absolute;left:0;right:0;top:26px;text-align:center;pointer-events:none}
-    .gaugeB .val{font-weight:800;font-size:20px}
-    .gaugeB .unit{font-size:11px;color:var(--muted);margin-top:-2px}
-    .gaugeB .mm{position:absolute;left:6px;right:6px;bottom:0;display:flex;justify-content:space-between;font-size:11px;color:#9fb0c6}
-    .cfg{display:none;margin-top:8px;background:#0f172a;border:1px dashed rgba(148,163,184,.28);border-radius:10px;padding:8px;gap:8px}
-    .cfg .row{display:grid;grid-template-columns:58px 1fr 1fr;gap:8px;align-items:center;margin:4px 0}
-    .cfg input{width:100%;background:#0b1220;color:var(--text);border:1px solid rgba(148,163,184,.3);border-radius:8px;padding:6px 8px}
-    .cfg .actions{display:flex;gap:8px;justify-content:flex-end}
+
+    /* inline settings */
+    .settings{margin-top:8px;background:#0f172a;border:1px dashed rgba(148,163,184,.25);border-radius:10px;padding:8px;display:none}
+    .settings-row{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:8px}
+    .settings input{width:100%;background:#0b1220;color:#e5e7eb;border:1px solid rgba(148,163,184,.28);border-radius:8px;padding:6px}
+    .settings .btn{padding:6px 10px}
+    .settings .hint{grid-column:1/-1;color:#94a3b8;font-size:11px}
   </style>
 </head>
 <body>
   <script>
-  // Session guard (แก้จุดพิมพ์ตก)
+  // Session guard (ตามไฟล์ 3D)
   (function(){
     try{
       const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
@@ -84,16 +106,21 @@
   </div>
 
   <div id="filters">
-    <select id="fFloor"><option value="">ทุกชั้น</option><option>F1</option><option>F2</option></select>
+    <select id="fFloor">
+      <option value="">ทุกชั้น</option>
+      <option>F1</option>
+      <option>F2</option>
+    </select>
     <select id="fRoom"><option value="">ทุกห้อง</option></select>
     <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1">
     <span class="muted">* LIVE จาก WebSocket</span>
   </div>
 
   <div id="grid" class="grid"></div>
-  <footer><span class="muted">เกจครึ่งวงกลมสไตล์ Blynk • ตั้งค่า min/max แยกการ์ด (จำค่าไว้)</span></footer>
+  <footer><span class="muted">เกจสไตล์วัดเข็มคล้าย Blynk • ตั้งค่า min/max แยกการ์ด (จำค่าไว้)</span></footer>
 
   <script type="module">
+    /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
     async function resolveWS(){
       const params = new URLSearchParams(location.search);
       let url = params.get('ws') || localStorage.getItem('wsEndpoint');
@@ -110,6 +137,7 @@
       return url;
     }
 
+    /* ---------- Layout mirror (ตามหน้า 3D) ---------- */
     const PLAN_ROOMS=[
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
@@ -130,12 +158,7 @@
       FLOORS.push(floor);
     });
 
-    /* per-card ranges */
-    let RANGES={}; try{RANGES=JSON.parse(localStorage.getItem('gaugeRangesV1')||'{}')||{};}catch(e){}
-    const defaultRanges={amp:{min:0,max:15}, flow:{min:0,max:220}};
-    const getRanges=id=>({amp:{...(RANGES[id]?.amp||defaultRanges.amp)}, flow:{...(RANGES[id]?.flow||defaultRanges.flow)}});
-    const saveRanges=()=>{try{localStorage.setItem('gaugeRangesV1', JSON.stringify(RANGES));}catch(e){}};
-
+    /* ---------- Helpers UI ---------- */
     const grid = document.getElementById('grid');
     const liveBadge = document.getElementById('liveBadge');
     const fFloor = document.getElementById('fFloor');
@@ -156,83 +179,321 @@
     fText .addEventListener('input', render);
     rebuildRoomFilter();
 
-    function gaugeMarkup(kind, id){
-      const clr = (kind==='amp') ? '#93c5fd' : '#22c55e';
-      const base = (kind==='amp') ? 'ga' : 'gf';
-      const d = `M20 80 A 50 50 0 0 1 120 80`;
-      return `
-      <div class="gaugeB" style="--clr:${clr}">
-        <svg viewBox="0 0 140 110" aria-hidden="true">
-          <path class="bg" d="${d}" pathLength="100"></path>
-          <path class="fg" id="${base}-arc-${id}" d="${d}" pathLength="100" style="stroke-dasharray:100;stroke-dashoffset:100"></path>
-        </svg>
-        <div class="center">
-          <div class="val" id="${base==='ga'?'gav':'gfv'}-${id}">0</div>
-          <div class="unit">${kind==='amp'?'Amp (A)':'Flow (L/min)'}</div>
-        </div>
-        <div class="mm"><span id="${base}-min-${id}">0</span><span id="${base}-max-${id}">100</span></div>
-      </div>`;
+    /* ---------- สร้างรายการปั๊มให้ชัวร์ (fallback ถ้าว่าง) ---------- */
+    const PUMP_IDS = FLOORS.reduce((acc, f) => {
+      f.rooms.forEach(r => acc.push(...r.pumps));
+      return acc;
+    }, []);
+    if (!PUMP_IDS.length) {
+      for (const f of ['F1','F2']) for (let r=1;r<=3;r++) for (let p=1;p<=2;p++) PUMP_IDS.push(`${f}-R${r}-P${p}`);
     }
+
+    /* ---------- เก็บช่วง min/max ต่อการ์ด ---------- */
+    const DEFAULT_RANGES = { ampMin:0, ampMax:15, flowMin:0, flowMax:220 };
+    let gaugeRanges = {};
+    try{ gaugeRanges = JSON.parse(localStorage.getItem('gaugeRangesV1')||'{}')||{}; }catch(e){ gaugeRanges={}; }
+    const saveRanges = ()=>{ try{ localStorage.setItem('gaugeRangesV1', JSON.stringify(gaugeRanges)); }catch(e){} };
+
+    /* ---------- สร้างเกจ SVG แบบเข็ม ---------- */
+    function createNeedleGauge(container, {min=0,max=100,unit='',color='#93c5fd'}={}){
+      // ขนาด
+      const W=160, H=120, CX=80, CY=100, R=72;
+      const start = -130 * Math.PI/180, end = 130 * Math.PI/180; // ครึ่งวง 260°
+      // สร้าง SVG
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS,'svg');
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.style.width='160px'; svg.style.height='120px';
+      svg.style.display='block';
+
+      // วงโค้งพื้นหลัง
+      const bg = document.createElementNS(svgNS,'path');
+      bg.setAttribute('d', describeArc(CX,CY,R,start,end));
+      bg.setAttribute('fill','none');
+      bg.setAttribute('stroke','#293447');
+      bg.setAttribute('stroke-width','12');
+      bg.setAttribute('stroke-linecap','round');
+      svg.appendChild(bg);
+
+      // วงโค้งค่า
+      const fg = document.createElementNS(svgNS,'path');
+      fg.setAttribute('d', describeArc(CX,CY,R,start,start));
+      fg.setAttribute('fill','none');
+      fg.setAttribute('stroke',color);
+      fg.setAttribute('stroke-width','12');
+      fg.setAttribute('stroke-linecap','round');
+      svg.appendChild(fg);
+
+      // เข็ม
+      const needle = document.createElementNS(svgNS,'line');
+      needle.setAttribute('x1', CX);
+      needle.setAttribute('y1', CY);
+      needle.setAttribute('x2', CX);
+      needle.setAttribute('y2', CY-R+10);
+      needle.setAttribute('stroke','#e5e7eb');
+      needle.setAttribute('stroke-width','3');
+      needle.setAttribute('stroke-linecap','round');
+      needle.style.transformOrigin = `${CX}px ${CY}px`;
+      needle.style.transform = `rotate(${-130}deg)`;
+      svg.appendChild(needle);
+
+      // จุดกลาง
+      const hub = document.createElementNS(svgNS,'circle');
+      hub.setAttribute('cx', CX);
+      hub.setAttribute('cy', CY);
+      hub.setAttribute('r', 4.5);
+      hub.setAttribute('fill','#e5e7eb');
+      svg.appendChild(hub);
+
+      // ตัวเลข
+      const valEl = document.createElement('div');
+      valEl.style.textAlign='center';
+      valEl.style.fontWeight='800';
+      valEl.style.marginTop='-6px';
+      valEl.textContent='0';
+      const unitEl = document.createElement('div');
+      unitEl.style.textAlign='center';
+      unitEl.style.fontSize='11px';
+      unitEl.style.color='var(--muted)';
+      unitEl.textContent=unit;
+
+      container.appendChild(svg);
+      container.appendChild(valEl);
+      container.appendChild(unitEl);
+
+      function describeArc(cx, cy, r, a0, a1){
+        const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+        const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+        const large = (a1-a0)%(Math.PI*2) > Math.PI ? 1:0;
+        return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+      }
+      function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+      // setter
+      let curMin=min, curMax=max;
+      function setRange(minV,maxV){
+        curMin=minV; curMax=maxV;
+      }
+      function setValue(v){
+        const t = (clamp(v,curMin,curMax)-curMin)/((curMax-curMin)||1); // 0..1
+        const ang = -130 + 260*t;
+        needle.style.transform = `rotate(${ang}deg)`;
+        // วาด arc ถึงตำแหน่งปัจจุบัน
+        const a1 = (start + (end-start)*t);
+        fg.setAttribute('d', describeArc(CX,CY,R,start,a1));
+        valEl.textContent = (typeof v==='number'? (unit==='Amp' ? v.toFixed(1) : Math.round(v)) : '0');
+      }
+      return {setValue, setRange};
+    }
+
+    /* ---------- DOM การ์ด ---------- */
+    const ampGauges = new Map(); // id -> gauge
+    const flowGauges = new Map(); // id -> gauge
 
     function cardHTML(id){
       const [floor, room] = id.split('-').slice(0,2);
-      const rng = getRanges(id);
-      return `<div class="card" id="card-${id}">
-        <div class="head">
-          <div>
-            <div class="id">${id}</div>
-            <div class="sub">${floor}/${room}</div>
+      const r = gaugeRanges[id] || DEFAULT_RANGES;
+      return `
+        <div class="card" id="card-${id}">
+          <div class="head">
+            <div>
+              <div class="id">${id}</div>
+              <div class="sub">${floor}/${room}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="status" id="st-${id}">—</span>
+              <button class="gear" title="ตั้งค่า" data-id="${id}">⚙</button>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span class="status" id="st-${id}">—</span>
-            <button class="iconbtn" title="Config" onclick="document.getElementById('cfg-${id}').style.display=(document.getElementById('cfg-${id}').style.display==='grid'?'none':'grid')">⚙️</button>
-          </div>
-        </div>
-        <div class="gwrap">
-          <div>${gaugeMarkup('amp', id)}</div>
-          <div>${gaugeMarkup('flow', id)}</div>
-          <div class="kpi">
-            <div class="kv"><div class="k">สถานะ</div><div class="v" id="kv-run-${id}">—</div></div>
-            <div class="kv"><div class="k">สุขภาพ</div><div class="v" id="kv-hlth-${id}">—</div></div>
-            <div class="kv"><div class="k">Amp (A)</div><div class="v" id="kv-amp-${id}">0.0</div></div>
-            <div class="kv"><div class="k">Flow (L/min)</div><div class="v" id="kv-flow-${id}">0</div></div>
-          </div>
-        </div>
 
-        <div class="cfg" id="cfg-${id}" style="display:none;grid-template-columns:1fr">
-          <div class="row">
-            <div class="k">Amp</div>
-            <input id="in-amin-${id}" type="number" step="0.1" value="${rng.amp.min}">
-            <input id="in-amax-${id}" type="number" step="0.1" value="${rng.amp.max}">
+          <div class="gwrap">
+            <div class="gblock">
+              <div id="amp-svg-${id}"></div>
+            </div>
+            <div class="gblock">
+              <div id="flow-svg-${id}"></div>
+            </div>
+            <div class="kpi">
+              <div class="kv"><div class="k">สถานะ</div><div class="v" id="kv-run-${id}">—</div></div>
+              <div class="kv"><div class="k">สุขภาพ</div><div class="v" id="kv-hlth-${id}">—</div></div>
+              <div class="kv"><div class="k">Amp (A)</div><div class="v" id="kv-amp-${id}">0.0</div></div>
+              <div class="kv"><div class="k">Flow (L/min)</div><div class="v" id="kv-flow-${id}">0</div></div>
+              <div class="kv"><div class="k">Amp min/max</div><div class="v">${r.ampMin}–${r.ampMax}</div></div>
+              <div class="kv"><div class="k">Flow min/max</div><div class="v">${r.flowMin}–${r.flowMax}</div></div>
+            </div>
           </div>
-          <div class="row">
-            <div class="k">Flow</div>
-            <input id="in-fmin-${id}" type="number" step="1" value="${rng.flow.min}">
-            <input id="in-fmax-${id}" type="number" step="1" value="${rng.flow.max}">
-          </div>
-          <div class="actions">
-            <button class="iconbtn" onclick="(function(){
-              const id='${id}';
-              const aMin=Number(document.getElementById('in-amin-'+id).value)||0;
-              const aMax=Number(document.getElementById('in-amax-'+id).value)||1;
-              const fMin=Number(document.getElementById('in-fmin-'+id).value)||0;
-              const fMax=Number(document.getElementById('in-fmax-'+id).value)||1;
-              window.__updateRanges(id,{amp:{min:aMin,max:aMax},flow:{min:fMin,max:fMax}});
-              document.getElementById('cfg-'+id).style.display='none';
-            })()">Save</button>
-            <button class="iconbtn" onclick="document.getElementById('cfg-${id}').style.display='none'">Close</button>
+
+          <div class="settings" id="set-${id}">
+            <div class="settings-row">
+              <input type="number" step="0.1" id="ampMin-${id}" placeholder="Amp min" value="${r.ampMin}">
+              <input type="number" step="0.1" id="ampMax-${id}" placeholder="Amp max" value="${r.ampMax}">
+              <input type="number" step="1"   id="flowMin-${id}" placeholder="Flow min" value="${r.flowMin}">
+              <input type="number" step="1"   id="flowMax-${id}" placeholder="Flow max" value="${r.flowMax}">
+              <span>
+                <button class="btn" data-save="${id}">Save</button>
+                <button class="btn" data-cancel="${id}">Cancel</button>
+              </span>
+              <div class="hint">* ค่านี้จำเฉพาะการ์ดนี้ (เก็บในเบราว์เซอร์)</div>
+            </div>
           </div>
         </div>
-      </div>`;
+      `;
     }
 
-    window.__updateRanges = (id,r)=>{
-      RANGES[id]=r; saveRanges();
-      const rng=getRanges(id);
-      const aMinLbl=document.getElementById('ga-min-'+id), aMaxLbl=document.getElementById('ga-max-'+id);
-      const fMinLbl=document.getElementById('gf-min-'+id), fMaxLbl=document.getElementById('gf-max-'+id);
-      if(aMinLbl) aMinLbl.textContent=rng.amp.min;
-      if(aMaxLbl) aMaxLbl.textContent=rng.amp.max;
-      if(fMinLbl) fMinLbl.textContent=rng.flow.min;
-      if(fMaxLbl) fMaxLbl.textContent=rng.flow.max;
-      apply
+    function render(){
+      const q = (fText.value||'').trim().toLowerCase();
+      const ff = fFloor.value, rr = fRoom.value;
+      const ids = PUMP_IDS.filter(id=>{
+        if(q && !id.toLowerCase().includes(q)) return false;
+        if(ff && !id.startsWith(ff+'-')) return false;
+        if(rr && !id.includes('-'+rr+'-')) return false;
+        return true;
+      });
+
+      if (!ids.length) {
+        grid.innerHTML = `<div style="color:#94a3b8;padding:12px">ไม่พบปั๊มตามตัวกรอง</div>`;
+        return;
+      }
+
+      grid.innerHTML = ids.map(cardHTML).join('');
+
+      // สร้างเกจจริงหลัง DOM วางแล้ว
+      ids.forEach(id=>{
+        const ranges = gaugeRanges[id] || DEFAULT_RANGES;
+        const ampHost = document.getElementById(`amp-svg-${id}`);
+        const flowHost= document.getElementById(`flow-svg-${id}`);
+        const gA = createNeedleGauge(ampHost, {min:ranges.ampMin, max:ranges.ampMax, unit:'Amp', color:'#60a5fa'});
+        const gF = createNeedleGauge(flowHost,{min:ranges.flowMin,max:ranges.flowMax, unit:'Flow', color:'#22c55e'});
+        ampGauges.set(id,gA); flowGauges.set(id,gF);
+        applyStateToCard(id, state[id]||null); // paint ค่าปัจจุบัน
+
+        // Toggle settings
+        document.querySelector(`#card-${id} .gear`).addEventListener('click',()=>{
+          const box=document.getElementById(`set-${id}`);
+          box.style.display = (box.style.display==='block'?'none':'block');
+        });
+        // Save/Cancel
+        document.querySelector(`#set-${id} [data-save="${id}"]`).addEventListener('click', ()=>{
+          const aMin = parseFloat(document.getElementById(`ampMin-${id}`).value);
+          const aMax = parseFloat(document.getElementById(`ampMax-${id}`).value);
+          const fMin = parseFloat(document.getElementById(`flowMin-${id}`).value);
+          const fMax = parseFloat(document.getElementById(`flowMax-${id}`).value);
+          gaugeRanges[id] = {
+            ampMin: isFinite(aMin)?aMin:DEFAULT_RANGES.ampMin,
+            ampMax: isFinite(aMax)?aMax:DEFAULT_RANGES.ampMax,
+            flowMin:isFinite(fMin)?fMin:DEFAULT_RANGES.flowMin,
+            flowMax:isFinite(fMax)?fMax:DEFAULT_RANGES.flowMax,
+          };
+          saveRanges();
+          gA.setRange(gaugeRanges[id].ampMin, gaugeRanges[id].ampMax);
+          gF.setRange(gaugeRanges[id].flowMin, gaugeRanges[id].flowMax);
+          document.getElementById(`set-${id}`).style.display='none';
+          // อัปเดตการ์ดให้แสดงช่วงใหม่
+          render();
+        });
+        document.querySelector(`#set-${id} [data-cancel="${id}"]`).addEventListener('click', ()=>{
+          document.getElementById(`set-${id}`).style.display='none';
+        });
+      });
+    }
+
+    /* ---------- State & paint ---------- */
+    const state = {}; // id -> {enabled, amp, flow, health}
+    function classify(s){
+      if(!s || !s.enabled) return 'OFF';
+      const overCurr = (s.amp>10);
+      const lowFlow  = (s.flow<80);
+      if(overCurr && lowFlow) return 'BAD';
+      if(overCurr || s.amp>8 || s.flow<100) return 'WARN';
+      return 'OK';
+    }
+    function applyStateToCard(id, s){
+      const card = document.getElementById('card-'+id);
+      if(!card) return;
+      const st = document.getElementById('st-'+id);
+      const run = document.getElementById('kv-run-'+id);
+      const hl  = document.getElementById('kv-hlth-'+id);
+      const ka  = document.getElementById('kv-amp-'+id);
+      const kf  = document.getElementById('kv-flow-'+id);
+
+      if(!s){
+        st.textContent='—'; st.className='status';
+        run.textContent='—'; hl.textContent='—'; ka.textContent='0.0'; kf.textContent='0';
+        card.classList.remove('crit-ok','crit-warn','crit-bad');
+        // reset gauge
+        ampGauges.get(id)?.setValue(0);
+        flowGauges.get(id)?.setValue(0);
+        return;
+      }
+      st.textContent = s.enabled? 'ON':'OFF';
+      st.className = 'status ' + (s.enabled? 'on':'off');
+      run.textContent = s.enabled? 'RUN':'STOP';
+      const sev = classify(s);
+      hl.textContent = (sev==='OK'?'ปกติ':sev==='WARN'?'เตือน':sev==='BAD'?'ผิดปกติ':'ปิด');
+      card.classList.remove('crit-ok','crit-warn','crit-bad');
+      if(sev==='OK') card.classList.add('crit-ok');
+      else if(sev==='WARN') card.classList.add('crit-warn');
+      else if(sev==='BAD') card.classList.add('crit-bad');
+
+      ka.textContent = (s.amp||0).toFixed(1);
+      kf.textContent = Math.round(s.flow||0);
+
+      ampGauges.get(id)?.setValue(s.amp||0);
+      flowGauges.get(id)?.setValue(s.flow||0);
+    }
+
+    /* ---------- Back & Logout ---------- */
+    document.getElementById('btnBack').addEventListener('click', ()=>{
+      const ref = document.referrer;
+      try{
+        if(ref && new URL(ref).origin === location.origin){ history.back(); return; }
+      }catch(e){}
+      const q = new URLSearchParams(location.search);
+      const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
+      const home = localStorage.getItem('home3D') || './index.html';
+      const url = new URL(home, location.href);
+      if(ws) url.searchParams.set('ws', ws);
+      location.href = url.pathname + url.search;
+    });
+    document.getElementById('btnLogout').addEventListener('click', ()=>{
+      try{ localStorage.removeItem('sessionV1'); }catch(e){}
+      const next = encodeURIComponent('./pumps_gauges.html');
+      location.href = './login.html?next=' + next;
+    });
+
+    /* ---------- WS live ---------- */
+    const WS_URL = await resolveWS();
+    console.log('WS endpoint:', WS_URL);
+    let ws, wsTimer, backoff=2000;
+
+    function setLive(state,text){
+      liveBadge.classList.remove('ok','bad');
+      if(state==='ok'){ liveBadge.classList.add('ok'); liveBadge.textContent='LIVE: connected'; }
+      else if(state==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent='LIVE: disconnected'; }
+      else liveBadge.textContent = text || 'LIVE: idle';
+    }
+    function applyUpdate(msg){
+      if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
+      const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
+      if(!(m.id in state)) state[m.id] = {enabled:true, amp:0, flow:0, health:'OK'};
+      if(typeof m.enabled==='boolean') state[m.id].enabled = m.enabled;
+      if(typeof m.amp==='number') state[m.id].amp = m.amp;
+      if(typeof m.flow==='number') state[m.id].flow = m.flow;
+      applyStateToCard(m.id, state[m.id]);
+    }
+    function connectWS(){
+      if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
+      try{ ws=new WebSocket(WS_URL); }catch(e){ console.warn('WS construct error',e); setLive('bad'); return; }
+      ws.onopen=()=>{ backoff=2000; setLive('ok'); console.log('WS connected'); };
+      ws.onmessage=(ev)=>{ try{ const data=JSON.parse(ev.data); applyUpdate(data); }catch(e){ console.warn('WS parse fail',e); } };
+      ws.onclose =()=>{ setLive('bad'); clearTimeout(wsTimer); wsTimer=setTimeout(connectWS, backoff); backoff=Math.min(backoff*1.8, 20000); };
+      ws.onerror =(e)=> console.warn('WS error', e);
+    }
+    connectWS();
+    setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
+
+    // Render แรก
+    render();
+  </script>
+</body>
+</html>
