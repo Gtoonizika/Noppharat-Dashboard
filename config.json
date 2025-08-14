@@ -1,5 +1,6 @@
 {
-  "ws": "wss://adventures-subaru-bow-prayers.trycloudflare.com/ws/pumps/05022526",
+  "ws": "wss://devil-sight-assessment-establish.trycloudflare.com/ws/pumps/05022526",
+
   "auth": {
     "users": [
       { "user": "admin",  "hash": "22c4fdac80e54093b7e35ed31409218e4e7296593e95fcd52b4dc8145dcda563" },
