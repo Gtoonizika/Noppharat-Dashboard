@@ -113,7 +113,7 @@
     <option value="">ทุกชั้น</option><option>F1</option><option>F2</option>
   </select>
   <select id="fRoom"><option value="">ทุกห้อง</option></select>
-  <input id="fText" type="search" placeholder="ค้นหา ID หรือชื่อที่ตั้งเอง">
+  <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1">
   <span style="color:#9aa3b2;font-size:12px">* LIVE จาก WebSocket</span>
 </div>
 
@@ -162,15 +162,6 @@
     if(url) localStorage.setItem('wsEndpoint', url);
     return url;
   }
-
-  /* ---------- Pump name mapping (localStorage) ---------- */
-  const PN_KEY = 'pumpNamesCacheV1';
-  let pumpNames = {};
-  function loadPumpNamesLocal(){
-    try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY) || '{}') || {}; }catch(e){ pumpNames = {}; }
-  }
-  loadPumpNamesLocal();
-  const prettyName = (id)=> pumpNames[id] || id;
 
   const PLAN_ROOMS=[
     [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
@@ -255,26 +246,27 @@
   function severityOf(id, s){
     if(!s || !s.enabled) return 'OFF';
     const cfg = getCfg(id);
-    const R_A = ratio(+s.amp,  cfg.minAmp,  cfg.maxAmp);
-    const R_F = ratio(+s.flow, cfg.minFlow, cfg.maxFlow);
-    const zA  = cohort.sA>0 ? (+s.amp - cohort.mA)/cohort.sA : 0;
-    const zF  = cohort.sF>0 ? (cohort.mF - +s.flow)/cohort.sF : 0;
+    const R_A = ratio(+s.amp,  cfg.minAmp,  cfg.maxAmp);  // 0..1
+    const R_F = ratio(+s.flow, cfg.minFlow, cfg.maxFlow); // 0..1 (ยิ่งต่ำยิ่งน่าห่วง)
+    const zA  = cohort.sA>0 ? (+s.amp - cohort.mA)/cohort.sA : 0; // สูง + คือกระแสสูงกว่ากลุ่ม
+    const zF  = cohort.sF>0 ? (cohort.mF - +s.flow)/cohort.sF : 0; // สูง + คือโฟลว์ต่ำกว่ากลุ่ม
 
-    const overCurrHard = R_A >= 0.90;
+    const overCurrHard = R_A >= 0.90;           // ≥90% ของช่วงเกจ
     const overCurrSoft = R_A >= 0.75;
     const overCurrZBad = zA > 1.5;
     const overCurrZWrn = zA > 0.8;
 
-    const lowFlowHard  = R_F <= 0.10;
+    const lowFlowHard  = R_F <= 0.10;           // ≤10% ของช่วง
     const lowFlowSoft  = R_F <= 0.25;
     const lowFlowZBad  = zF > 1.0;
     const lowFlowZWrn  = zF > 0.6;
 
+    // sensor anomaly: กระแสเกือบ 0 แต่มีโฟลว์
     const sensorSusp   = (R_A < 0.02 && R_F > 0.2);
 
     if( (overCurrHard||overCurrZBad) && (lowFlowHard||lowFlowZBad) ) return 'BAD';
     if( overCurrHard || lowFlowHard ) return 'BAD';
-    if( (overCurrSoft||overCurrZWrn) && (lowFlowSoft||lowFlowZWrn) ) return 'BAD';
+    if( (overCurrSoft||overCurrZWrn) && (lowFlowSoft||lowFlowZWrn) ) return 'BAD'; // รวมเสี่ยงสองด้าน
     if( overCurrSoft||overCurrZWrn||lowFlowSoft||lowFlowZWrn||sensorSusp ) return 'WARN';
     return 'OK';
   }
@@ -307,8 +299,8 @@
     return `<div class="card" id="card-${id}" data-sev="OFF">
       <div class="head">
         <div>
-          <div class="id" id="nm-${id}">${prettyName(id)}</div>
-          <div class="sub">${id} • ${floor}/${room}</div>
+          <div class="id">${id}</div>
+          <div class="sub">${floor}/${room}</div>
         </div>
         <div class="badges">
           <span class="pill" id="run-${id}">—</span>
@@ -338,8 +330,7 @@
     const q = (fText.value||'').trim().toLowerCase();
     const ff = fFloor.value, rr = fRoom.value;
     const ids = PUMP_IDS.filter(id=>{
-      const name = prettyName(id).toLowerCase();
-      if(q && !(id.toLowerCase().includes(q) || name.includes(q))) return false;
+      if(q && !id.toLowerCase().includes(q)) return false;
       if(ff && !id.startsWith(ff+'-')) return false;
       if(rr && !id.includes('-'+rr+'-')) return false;
       return true;
@@ -423,7 +414,7 @@
     const vn  = document.getElementById('v-'+gid);
     const ndl = document.getElementById('needle-'+gid);
     const minL= document.getElementById('min-'+gid);
-    const maxL= document.getElementById('max-'+gid');
+    const maxL= document.getElementById('max-'+gid);
 
     if(minL) minL.textContent = min;
     if(maxL) maxL.textContent = max;
@@ -511,22 +502,13 @@
   // หลังได้รับ update: อัปเดต state -> คำนวณ cohort -> repaint ทุกการ์ดที่แสดง
   function applyUpdate(msg){
     if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
-    const m = msg&&typeof msg==='object'?msg:null; if(!m) return;
-
-    // รองรับ broadcast ชื่อจาก WS: {type:'pumpNames', map:{id:name}}
-    if(m.type === 'pumpNames' && m.map){
-      pumpNames = m.map || {};
-      try{ localStorage.setItem(PN_KEY, JSON.stringify(pumpNames)); }catch(e){}
-      onPumpNamesChanged();
-      return;
-    }
-
-    if(typeof m.id!=='string') return;
+    const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
     if(!(m.id in state)) state[m.id] = {enabled:true, amp:0, flow:0};
     if(typeof m.enabled==='boolean') state[m.id].enabled = m.enabled;
     if(typeof m.amp==='number') state[m.id].amp = m.amp;
     if(typeof m.flow==='number') state[m.id].flow = m.flow;
 
+    // คำนวณสถิติใหม่แล้ว repaint ทั้งชุดที่มองเห็น
     recomputeCohort();
     visibleIds.forEach(id=> applyStateToCard(id, state[id]||null));
   }
@@ -541,24 +523,9 @@
   }
   connectWS(); setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
 
-  /* ---------- ชื่อปั๊ม: sync จากแท็บอื่น ---------- */
-  function onPumpNamesChanged(){
-    // re-render เพื่ออัปเดตชื่อ + ใช้ผลค้นหาโดยชื่อได้
-    const qNow = fText.value;
-    render();
-    fText.value = qNow; // คงค่า search เดิม
-    recomputeCohort();
-    visibleIds.forEach(id=> applyStateToCard(id, state[id]||null));
-  }
-  window.addEventListener('storage', (e)=>{
-    if(e.key === PN_KEY){
-      loadPumpNamesLocal();
-      onPumpNamesChanged();
-    }
-  });
-
   /* ---------- Initial render ---------- */
   render();
+  // เผื่อมี state ตั้งต้นจากที่อื่น เรียกคำนวณ cohort อีกครั้ง
   recomputeCohort();
 </script>
 </body>
