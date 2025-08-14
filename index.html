@@ -46,11 +46,13 @@
     .aiWARN td{background:rgba(251,191,36,.06)}
     .aiBAD td{background:rgba(248,113,113,.06)}
 
-    #pumpInfo{position:fixed;z-index:85;background:var(--card);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;min-width:220px;pointer-events:auto;border:1px solid rgba(148,163,184,.25);transform:translate(-50%,-110%)}
+    #pumpInfo{position:fixed;z-index:85;background:var(--card);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;min-width:260px;pointer-events:auto;border:1px solid rgba(148,163,184,.25);transform:translate(-50%,-110%)}
     #pumpInfo h4{margin:0 0 6px;padding-right:22px}
     #pumpInfo .closeBtn{position:absolute;top:6px;right:8px;border:0;background:transparent;color:#cbd5e1;font-size:18px;cursor:pointer;line-height:1}
     #pumpInfo .closeBtn:hover{color:#fff}
     #pumpInfo .arrow{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:var(--card);border-left:1px solid rgba(148,163,184,.25);border-bottom:1px solid rgba(148,163,184,.25)}
+    #pumpInfo .row{display:flex;gap:6px;align-items:center;margin-top:8px}
+    #pumpInfo input[type="text"]{flex:1;background:#0f172a;color:#e5e7eb;border:1px solid rgba(148,163,184,.3);border-radius:8px;padding:6px 8px}
 
     #diagBar{position:fixed;right:12px;top:60px;z-index:65;background:var(--card);color:var(--text);padding:8px 12px;border-radius:12px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 
@@ -86,7 +88,6 @@
 
   <div id="topbar">
     <div id="leftArea">
-      <!-- ปุ่มฝั่งซ้าย -->
       <button id="btnGraphs" class="topbtn" title="Graphs">Graphs</button>
       <button id="btnGauges" class="topbtn" title="Gauges">Gauges</button>
       <div id="brand">RANHILL Dashboad 3D By Noppharat <span class="dot">•</span> IIOT 3D</div>
@@ -161,6 +162,10 @@
     <button id="piClose" class="closeBtn" title="Close" aria-label="Close">✕</button>
     <h4 id="piTitle">Pump</h4>
     <div id="piBody">Select a pump…</div>
+    <div class="row" id="piRenameRow" style="display:none;">
+      <input id="piRenameInput" type="text" placeholder="ตั้งชื่อแสดงผล">
+      <button class="btn" id="piRenameSave">Save</button>
+    </div>
     <div class="arrow"></div>
   </div>
 
@@ -180,6 +185,34 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+    /* =================== ชื่อปั๊มถาวร (REST/WS) =================== */
+    const API_BASE = location.origin;             // ถ้าโฮสต์คนละโดเมนแก้เป็น URL ของ Node-RED
+    const PN_KEY   = 'pumpNamesCacheV1';
+    let pumpNames  = {};                          // id -> display name
+
+    async function loadPumpNames(){
+      try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY)||'{}'); }catch(e){}
+      try{
+        const res = await fetch(`${API_BASE}/pump-names`, {cache:'no-store'});
+        if(res.ok){
+          pumpNames = await res.json();
+          localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+        }
+      }catch(e){ console.warn('GET /pump-names fail', e); }
+      return pumpNames;
+    }
+    async function savePumpName(id, newName){
+      const next = {...pumpNames, [id]: (newName||'').trim()};
+      const res = await fetch(`${API_BASE}/pump-names`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(next)
+      });
+      if(!res.ok) throw new Error('POST /pump-names failed');
+      pumpNames = next;
+      localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+    }
+    const prettyName = (id)=> pumpNames[id] || id;
+
+    /* =================== 3D main =================== */
     async function main(){
       /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
       async function resolveWS(){
@@ -197,6 +230,9 @@
         if(url) localStorage.setItem('wsEndpoint', url);
         return url;
       }
+
+      /* ---------- โหลดชื่อปั๊มก่อนสร้างฉาก ---------- */
+      await loadPumpNames();
 
       /* ---------- UI helpers ---------- */
       const liveBadge = document.getElementById('liveBadge');
@@ -218,7 +254,6 @@
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b1220);
 
-      // Use logarithmicDepthBuffer to reduce z-fighting on large/flat surfaces
       const renderer = new THREE.WebGLRenderer({antialias:true, logarithmicDepthBuffer:true});
       renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
       renderer.setSize(window.innerWidth,window.innerHeight);
@@ -234,7 +269,6 @@
       scene.add(new THREE.HemisphereLight(0xbcd0ff,0x101318,0.35));
       const sun = new THREE.DirectionalLight(0xffffff,1.3); sun.position.set(120,180,90); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); scene.add(sun);
 
-      // Move the big ground slightly down to avoid coplanar z-fighting with floor slabs
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(420,260), new THREE.MeshStandardMaterial({color:0x0c1324,roughness:.95}));
       ground.rotation.x = -Math.PI/2; ground.position.y = -0.1; ground.receiveShadow=true; scene.add(ground);
 
@@ -272,12 +306,11 @@
         const east =new THREE.Mesh(new THREE.BoxGeometry(t,h,d),mat); east.position.set(x+w/2,y,z); parent.add(east);
         const west =new THREE.Mesh(new THREE.BoxGeometry(t,h,d),mat); west.position.set(x-w/2,y,z); parent.add(west);
       }
-      function extrudeRect(w,h,t){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,t), wallMat); }
 
       let labelPrefs={}; try{const raw=localStorage.getItem('labelPrefsV1'); if(raw) labelPrefs=JSON.parse(raw)||{};}catch(e){}
       const saveLabelPrefs=()=>{ try{localStorage.setItem('labelPrefsV1', JSON.stringify(labelPrefs));}catch(e){} };
 
-      function createWaterPump(name){
+      function createWaterPump(id){
         const g=new THREE.Group();
         const base=new THREE.Mesh(new THREE.BoxGeometry(1.8,.12,1.0), new THREE.MeshStandardMaterial({color:0x1e3a8a,metalness:.4,roughness:.5}));
         base.position.y=.06; base.castShadow=base.receiveShadow=true; g.add(base);
@@ -322,20 +355,19 @@
         const flowArrow=new THREE.Mesh(new THREE.ConeGeometry(.08,.18,16), new THREE.MeshStandardMaterial({color:0x93c5fd,emissive:0x3b82f6,emissiveIntensity:1.2}));
         flowArrow.rotation.z=-Math.PI/2; flowArrow.position.set(1.0,.75,0); g.add(flowArrow);
 
-        const div=document.createElement('div'); div.className='label'; div.innerHTML=`<strong>${name}</strong><br><span>กำลังโหลด...</span>`; labelLayer.appendChild(div);
+        const div=document.createElement('div'); div.className='label'; div.innerHTML=`<strong>${prettyName(id)}</strong><br><span>กำลังโหลด...</span>`; labelLayer.appendChild(div);
 
-        const defaultShow = labelPrefs[name] !== false;
-        g.userData.state={name,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
-        g.userData.tick=(dt)=>{ const s=g.userData.state; const sp=THREE.MathUtils.clamp(s.flow/120,.2,3.2); /* animations omitted */ };
+        const defaultShow = labelPrefs[id] !== false;
+        g.userData.state={id,div,offset:new THREE.Vector3(.2,1.4,0),enabled:true,current:0,flow:0,targetCurrent:0,targetFlow:0,health:'ok',showFullLabel:defaultShow};
         return g;
       }
 
       function renderPumpLabel(s){
         const run=s.enabled; const cls=s.health==='ok'?'ok':(s.health==='warn'?'warn':'bad');
         if(!s.showFullLabel){
-          s.div.innerHTML=`<strong>${s.name}</strong><br><span class="${run?'ok':'bad'}">${run?'RUN':'STOP'}</span>`;
+          s.div.innerHTML=`<strong>${prettyName(s.id)}</strong><br><span class="${run?'ok':'bad'}">${run?'RUN':'STOP'}</span>`;
         }else{
-          s.div.innerHTML=`<strong>${s.name}</strong><br><span class="${cls}">Amp: ${s.current.toFixed(1)} A</span><br><span class="${cls}">Flow: ${s.flow.toFixed(0)} L/min</span>${run?'':'<br><span class="bad">OFF</span>'}`;
+          s.div.innerHTML=`<strong>${prettyName(s.id)}</strong><br><span class="${cls}">Amp: ${s.current.toFixed(1)} A</span><br><span class="${cls}">Flow: ${s.flow.toFixed(0)} L/min</span>${run?'':'<br><span class="bad">OFF</span>'}`;
         }
       }
       function updatePumpLabel(obj){
@@ -391,13 +423,13 @@
             const count=(r.w*r.d>260)?3:2;
 
             for(let i=0;i<count;i++){
-              const name=`${floorId}-R${ri+1}-P${i+1}`;
-              const t=createWaterPump(name);
+              const id=`${floorId}-R${ri+1}-P${i+1}`;
+              const t=createWaterPump(id);
               const px=r.x + (-r.w/4 + (i%3)*r.w/4);
               const pz=r.z + (i>1? r.d/6 : -r.d/6);
               t.position.set(px,0,pz);
               floorGroup.add(t); pumps.push(t); roomObj.pumps.push(t);
-              pumpsAll.push({id:name, floor:floorId, roomObj, name, group:t});
+              pumpsAll.push({id, floor:floorId, roomObj, name:id, group:t});
             }
             roomObjs.push(roomObj);
           });
@@ -455,7 +487,7 @@
             const detR=document.createElement('details'); detR.open=false; const sumR=document.createElement('summary'); sumR.textContent=`${R.name} (${R.id})`; detR.appendChild(sumR);
             R.pumps.forEach(P=>{
               const s=P.userData.state; const div=document.createElement('div'); div.className='item';
-              const left=document.createElement('span'); left.textContent=s.name;
+              const left=document.createElement('span'); left.textContent=`${prettyName(s.id)} (${s.id})`;
               const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=s.enabled; cb.addEventListener('change',()=> setPumpEnabled(P, cb.checked));
               div.appendChild(left); div.appendChild(cb); detR.appendChild(div);
             });
@@ -502,7 +534,7 @@
       document.getElementById('btnReseed').addEventListener('click', reseedTargets);
       let run=true; document.getElementById('btnPause').addEventListener('click',()=>{ run=!run; document.getElementById('btnPause').textContent=run?'Pause':'Resume'; });
 
-      /* ---------- Picking / popup ---------- */
+      /* ---------- Picking / popup (มี Rename) ---------- */
       const raycaster=new THREE.Raycaster(); const mouse=new THREE.Vector2();
       function pickPump(ev){
         const r=renderer.domElement.getBoundingClientRect();
@@ -519,6 +551,10 @@
       const piTitle=document.getElementById('piTitle');
       const piBody=document.getElementById('piBody');
       const piClose=document.getElementById('piClose');
+      const piRenameRow=document.getElementById('piRenameRow');
+      const piRenameInput=document.getElementById('piRenameInput');
+      const piRenameSave=document.getElementById('piRenameSave');
+
       let activePump=null, pumpInfoVisible=false;
 
       function updatePumpInfoPosition(){
@@ -529,7 +565,7 @@
         pumpInfo.style.display='block';
         let left=(ndc.x*0.5+0.5)*rect.width + rect.left;
         let top =(-ndc.y*0.5+0.5)*rect.height + rect.top;
-        const pad=10,w=pumpInfo.offsetWidth||240,h=pumpInfo.offsetHeight||120;
+        const pad=10,w=pumpInfo.offsetWidth||260,h=pumpInfo.offsetHeight||140;
         left=Math.min(Math.max(left,pad+w/2), window.innerWidth - pad - w/2);
         top =Math.min(Math.max(top ,pad+h/2), window.innerHeight - pad - h/2);
         pumpInfo.style.left=left+'px'; pumpInfo.style.top=top+'px';
@@ -538,14 +574,30 @@
         const obj=pickPump(ev);
         if(obj){
           activePump=obj; const s=obj.userData.state;
-          piTitle.textContent=s.name;
+          piTitle.textContent = `${prettyName(s.id)}  (${s.id})`;
           piBody.innerHTML=`State: <b>${s.enabled?'RUN':'STOP'}</b><br/>Amp: <b>${s.current.toFixed(2)}</b> A<br/>Flow: <b>${s.flow.toFixed(0)}</b> L/min`;
+          piRenameRow.style.display='flex';
+          piRenameInput.value = prettyName(s.id);
           pumpInfoVisible=true; pumpInfo.style.display='block'; updatePumpInfoPosition();
         }
       });
       piClose.addEventListener('click',()=>{ pumpInfoVisible=false; pumpInfo.style.display='none'; activePump=null; });
       window.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ pumpInfoVisible=false; pumpInfo.style.display='none'; activePump=null; }});
       renderer.domElement.addEventListener('dblclick',(ev)=>{ const obj=pickPump(ev); if(obj){ const target=new THREE.Vector3(); obj.getWorldPosition(target); controls.target.copy(target); }});
+
+      // Save rename
+      piRenameSave.addEventListener('click', async ()=>{
+        if(!activePump) return;
+        const id = activePump.userData.state.id;
+        const nv = (piRenameInput.value||'').trim();
+        try{
+          await savePumpName(id, nv);
+          // repaint labels + panel + popup title
+          renderPumpLabel(activePump.userData.state);
+          rebuildPanel();
+          piTitle.textContent = `${prettyName(id)}  (${id})`;
+        }catch(e){ alert('บันทึกชื่อไม่สำเร็จ'); }
+      });
 
       /* ---------- Status / settings / AI ---------- */
       const statusPage=document.getElementById('statusPage');
@@ -558,7 +610,7 @@
       function closeStatus(){ statusPage.style.display='none'; btnPrev.style.display='none'; btnNext.style.display='inline-block'; }
       btnPrev.addEventListener('click', closeStatus); btnBack.addEventListener('click', closeStatus);
 
-      // Gauges button -> pumps_gauges.html (carry ?ws= or localStorage ws)
+      // Gauges
       const btnGauges = document.getElementById('btnGauges');
       btnGauges?.addEventListener('click', ()=>{
         const q = new URLSearchParams(location.search);
@@ -567,8 +619,7 @@
         if(ws) url.searchParams.set('ws', ws);
         location.href = url.pathname + url.search;
       });
-
-      // Graphs button -> pumps_graphs.html (carry ?ws= or localStorage ws)
+      // Graphs
       const btnGraphs = document.getElementById('btnGraphs');
       btnGraphs?.addEventListener('click', ()=>{
         const q = new URLSearchParams(location.search);
@@ -578,7 +629,6 @@
         location.href = url.pathname + url.search;
       });
 
-      // ✅ Settings overlay handlers (แก้ให้ปุ่ม Setting ทำงาน)
       const settingsPage = document.getElementById('settingsPage');
       const btnSettings = document.getElementById('btnSettings');
       const btnSettingsClose = document.getElementById('btnSettingsClose');
@@ -588,23 +638,21 @@
       const setTopDown = document.getElementById('setTopDown');
 
       function openSettings(){
-        // สร้างรายการสลับโชว์ label รายปั๊ม
         settingsLabelList.innerHTML='';
         pumpsAll.forEach(({name,group})=>{
           const s=group.userData.state;
           const row=document.createElement('div');
           row.className='settingsRow';
           row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(148,163,184,.15)';
-          const left=document.createElement('span'); left.textContent=name;
+          const left=document.createElement('span'); left.textContent=`${prettyName(s.id)} (${s.id})`;
           const right=document.createElement('label'); right.className='switch';
           const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=s.showFullLabel;
-          cb.addEventListener('change',()=>{ s.showFullLabel=cb.checked; labelPrefs[name]=s.showFullLabel; saveLabelPrefs(); });
+          cb.addEventListener('change',()=>{ s.showFullLabel=cb.checked; labelPrefs[s.id]=s.showFullLabel; saveLabelPrefs(); renderPumpLabel(s); });
           right.appendChild(cb); right.append(' Show full label');
           row.appendChild(left); row.appendChild(right);
           settingsLabelList.appendChild(row);
         });
 
-        // sync ค่า grid & camera
         setShowGrid.checked = grid.visible;
         setTopDown.checked  = (camera.position.y>120);
 
@@ -636,7 +684,10 @@
       function rowsSnapshot(){
         const rows=[];
         floors.forEach(F=> F.rooms.forEach(R=> R.pumps.forEach(P=>{
-          const s=P.userData.state; rows.push({id:s.name,floor:F.id,room:R.id,name:s.name,enabled:s.enabled,amp:s.current,flow:s.flow,group:P});
+          const s=P.userData.state; rows.push({
+            id:s.id,floor:F.id,room:R.id,name:prettyName(s.id),
+            enabled:s.enabled,amp:s.current,flow:s.flow,group:P
+          });
         })));
         return rows;
       }
@@ -716,9 +767,9 @@
       /* ---------- Animate ---------- */
       const lerp=(a,b,t)=>a+(b-a)*t; let last=performance.now();
       function animate(now){ requestAnimationFrame(animate); const dt=Math.min(.1,(now-last)/1000); last=now;
-        if(run){ pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
+        pumpsAll.forEach(({group})=>{ const s=group.userData.state; s.current=lerp(s.current,s.targetCurrent,Math.min(1,dt*2)); s.flow=lerp(s.flow,s.targetFlow,Math.min(1,dt*2));
           if(s.current>10||s.flow<80) s.health='bad'; else if(s.current>8||s.flow<100) s.health='warn'; else s.health='ok';
-          renderPumpLabel(s); }); }
+          renderPumpLabel(s); });
         neonMats.forEach(m=>{ m.opacity=.55 + .35*Math.sin(now*0.004 + (m.userData?.phase||0)); });
         controls.update(); renderer.render(scene,camera);
         floors.forEach(F=>F.pumps.forEach(updatePumpLabel)); updateFloorLabels(); updateRoomNameLabels();
@@ -736,11 +787,29 @@
       const updateWSIndicator=()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); };
       function applyUpdate(msg){
         if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
-        const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
-        const rec=pumpsAll.find(p=>p.id===m.id); if(!rec) return; const s=rec.group.userData.state;
-        if(typeof m.enabled==='boolean') s.enabled=m.enabled;
-        if(typeof m.amp==='number') s.targetCurrent=m.amp;
-        if(typeof m.flow==='number') s.targetFlow=m.flow;
+        const m = msg&&typeof msg==='object'?msg:null; if(!m) return;
+
+        // อัปเดตค่าปั๊ม
+        if(typeof m.id==='string'){
+          const rec=pumpsAll.find(p=>p.id===m.id); if(!rec) return; const s=rec.group.userData.state;
+          if(typeof m.enabled==='boolean') s.enabled=m.enabled;
+          if(typeof m.amp==='number') s.targetCurrent=m.amp;
+          if(typeof m.flow==='number') s.targetFlow=m.flow;
+          return;
+        }
+
+        // อัปเดตชื่อแบบถาวรที่ broadcast มาจาก Node-RED
+        if(m.type==='pumpNames' && m.map){
+          pumpNames = m.map;
+          localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+          // repaint labels + panel + popup
+          pumpsAll.forEach(p=> renderPumpLabel(p.group.userData.state));
+          rebuildPanel();
+          if(activePump){
+            const id = activePump.userData.state.id;
+            piTitle.textContent = `${prettyName(id)}  (${id})`;
+          }
+        }
       }
       function connectWS(){
         if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
