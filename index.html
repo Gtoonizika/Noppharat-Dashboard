@@ -62,7 +62,6 @@
     @media (max-width:900px){#panel{width:280px} #panelToggle{left:312px}}
   </style>
 
-  <!-- import map -->
   <script type="importmap">
   {"imports":{
     "three":"https://unpkg.com/three@0.158.0/build/three.module.js",
@@ -185,34 +184,6 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    /* =================== ชื่อปั๊มถาวร (REST/WS) =================== */
-    const API_BASE = location.origin;             // ถ้าโฮสต์คนละโดเมนแก้เป็น URL ของ Node-RED
-    const PN_KEY   = 'pumpNamesCacheV1';
-    let pumpNames  = {};                          // id -> display name
-
-    async function loadPumpNames(){
-      try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY)||'{}'); }catch(e){}
-      try{
-        const res = await fetch(`${API_BASE}/pump-names`, {cache:'no-store'});
-        if(res.ok){
-          pumpNames = await res.json();
-          localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-        }
-      }catch(e){ console.warn('GET /pump-names fail', e); }
-      return pumpNames;
-    }
-    async function savePumpName(id, newName){
-      const next = {...pumpNames, [id]: (newName||'').trim()};
-      const res = await fetch(`${API_BASE}/pump-names`, {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(next)
-      });
-      if(!res.ok) throw new Error('POST /pump-names failed');
-      pumpNames = next;
-      localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-    }
-    const prettyName = (id)=> pumpNames[id] || id;
-
-    /* =================== 3D main =================== */
     async function main(){
       /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
       async function resolveWS(){
@@ -231,7 +202,51 @@
         return url;
       }
 
-      /* ---------- โหลดชื่อปั๊มก่อนสร้างฉาก ---------- */
+      /* ---------- คำนวณ API_BASE จาก WS หรือ ?api= ---------- */
+      const WS_URL = await resolveWS();
+      const q = new URLSearchParams(location.search);
+      const apiOverride = q.get('api'); // optional, e.g. ?api=https://your-tunnel
+      const API_BASE = (()=> {
+        try{
+          if(apiOverride){
+            const u = new URL(apiOverride);
+            // ถ้าใส่มาแบบเต็ม /api แล้ว ก็ใช้เลย; ถ้าไม่มีก็เติม /api ให้
+            return u.pathname.endsWith('/api') ? apiOverride.replace(/\/$/,'') : (u.origin + '/api');
+          }
+          if(WS_URL){
+            const httpURL = new URL(WS_URL.replace(/^wss?:\/\//, m => m==='wss://' ? 'https://' : 'http://'));
+            return httpURL.origin + '/api';
+          }
+        }catch(e){}
+        return location.origin + '/api';
+      })();
+
+      /* ---------- storage + REST helpers ---------- */
+      const PN_KEY='pumpNamesCacheV1';
+      let pumpNames={};
+      const prettyName = (id)=> pumpNames[id] || id;
+
+      async function loadPumpNames(){
+        try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY)||'{}'); }catch(e){}
+        try{
+          const res = await fetch(`${API_BASE}/pump-names`, {cache:'no-store'});
+          if(res.ok){
+            pumpNames = await res.json();
+            localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+          }
+        }catch(e){ console.warn('GET /pump-names fail', e); }
+      }
+      async function savePumpName(id, newName){
+        const res = await fetch(`${API_BASE}/pump-names/${encodeURIComponent(id)}`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({name:(newName||'').trim()})
+        });
+        if(!res.ok) throw new Error('POST /pump-names/:id failed');
+        pumpNames[id] = (newName||'').trim();
+        localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+      }
+
+      /* ---------- โหลดชื่อก่อนสร้างฉาก ---------- */
       await loadPumpNames();
 
       /* ---------- UI helpers ---------- */
@@ -585,7 +600,7 @@
       window.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ pumpInfoVisible=false; pumpInfo.style.display='none'; activePump=null; }});
       renderer.domElement.addEventListener('dblclick',(ev)=>{ const obj=pickPump(ev); if(obj){ const target=new THREE.Vector3(); obj.getWorldPosition(target); controls.target.copy(target); }});
 
-      // Save rename
+      // Save rename → REST
       piRenameSave.addEventListener('click', async ()=>{
         if(!activePump) return;
         const id = activePump.userData.state.id;
@@ -639,7 +654,7 @@
 
       function openSettings(){
         settingsLabelList.innerHTML='';
-        pumpsAll.forEach(({name,group})=>{
+        pumpsAll.forEach(({group})=>{
           const s=group.userData.state;
           const row=document.createElement('div');
           row.className='settingsRow';
@@ -781,7 +796,6 @@
       window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
 
       /* ---------- LIVE WebSocket ---------- */
-      const WS_URL = await resolveWS();
       console.log('WS endpoint:', WS_URL);
       let ws, wsTimer, backoff=2000;
       const updateWSIndicator=()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); };
@@ -789,7 +803,6 @@
         if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
         const m = msg&&typeof msg==='object'?msg:null; if(!m) return;
 
-        // อัปเดตค่าปั๊ม
         if(typeof m.id==='string'){
           const rec=pumpsAll.find(p=>p.id===m.id); if(!rec) return; const s=rec.group.userData.state;
           if(typeof m.enabled==='boolean') s.enabled=m.enabled;
@@ -797,12 +810,9 @@
           if(typeof m.flow==='number') s.targetFlow=m.flow;
           return;
         }
-
-        // อัปเดตชื่อแบบถาวรที่ broadcast มาจาก Node-RED
         if(m.type==='pumpNames' && m.map){
           pumpNames = m.map;
           localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-          // repaint labels + panel + popup
           pumpsAll.forEach(p=> renderPumpLabel(p.group.userData.state));
           rebuildPanel();
           if(activePump){
