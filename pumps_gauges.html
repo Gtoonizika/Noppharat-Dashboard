@@ -218,6 +218,22 @@
     try{ localStorage.setItem('gaugeCfgV1', JSON.stringify(gaugeCfg)); }catch(e){}
   }
 
+  /* ---------- Display names (pumpNames) ---------- */
+  const PN_KEY = 'pumpNamesCacheV1';
+  let pumpNames = {};
+  const prettyName = (id)=> pumpNames[id] || id;
+
+  async function loadPumpNames(API_BASE){
+    try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY)||'{}') || {}; }catch(e){}
+    try{
+      const res = await fetch(`${API_BASE}/pump-names`, {cache:'no-store'});
+      if(res.ok){
+        pumpNames = await res.json();
+        localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+      }
+    }catch(e){ console.warn('GET /pump-names fail', e); }
+  }
+
   /* ---------- “AI” health (ช่วง + cohort stats) ---------- */
   const ARC_LEN = Math.PI*90;
   const state = {};                // id -> {enabled, amp, flow}
@@ -296,11 +312,12 @@
   function cardHTML(id){
     const [floor, room] = id.split('-').slice(0,2);
     const cfg = getCfg(id);
+    const name = prettyName(id);
     return `<div class="card" id="card-${id}" data-sev="OFF">
       <div class="head">
         <div>
-          <div class="id">${id}</div>
-          <div class="sub">${floor}/${room}</div>
+          <div class="id" id="title-${id}" title="${id}">${name}</div>
+          <div class="sub">${floor}/${room} • <span class="id-s">${id}</span></div>
         </div>
         <div class="badges">
           <span class="pill" id="run-${id}">—</span>
@@ -326,6 +343,11 @@
     </div>`;
   }
 
+  function updateCardTitle(id){
+    const el = document.getElementById('title-'+id);
+    if(el) el.textContent = prettyName(id);
+  }
+
   function render(){
     const q = (fText.value||'').trim().toLowerCase();
     const ff = fFloor.value, rr = fRoom.value;
@@ -341,6 +363,7 @@
       document.getElementById('gear-'+id)?.addEventListener('click', ()=> openSettings(id));
       applyMinMaxLabels(id);
       applyStateToCard(id, state[id]||null);
+      updateCardTitle(id);
     });
   }
 
@@ -370,7 +393,7 @@
   function openSettings(id){
     editingId = id;
     const cfg = getCfg(id);
-    dlgId.textContent = id;
+    dlgId.textContent = `${prettyName(id)} (${id})`;
     ampMin.value = cfg.minAmp;
     ampMax.value = cfg.maxAmp;
     flowMin.value= cfg.minFlow;
@@ -414,7 +437,7 @@
     const vn  = document.getElementById('v-'+gid);
     const ndl = document.getElementById('needle-'+gid);
     const minL= document.getElementById('min-'+gid);
-    const maxL= document.getElementById('max-'+gid);
+    const maxL= document.getElementById('max-'+gid');
 
     if(minL) minL.textContent = min;
     if(maxL) maxL.textContent = max;
@@ -487,7 +510,7 @@
     location.href = './login.html?next=' + next;
   });
 
-  /* ---------- WS live ---------- */
+  /* ---------- WS live + API_BASE + names ---------- */
   const WS_URL = await resolveWS();
   console.log('WS endpoint:', WS_URL);
   let ws, wsTimer, backoff=2000;
@@ -498,6 +521,26 @@
     else if(state==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent='LIVE: disconnected'; }
     else liveBadge.textContent = text || 'LIVE: idle';
   }
+
+  // คำนวณ API_BASE เหมือนหน้า 3D (รองรับ ?api=)
+  const q = new URLSearchParams(location.search);
+  const apiOverride = q.get('api'); // optional, e.g. ?api=https://your-tunnel
+  const API_BASE = (()=> {
+    try{
+      if(apiOverride){
+        const u = new URL(apiOverride);
+        return u.pathname.endsWith('/api') ? apiOverride.replace(/\/$/,'') : (u.origin + '/api');
+      }
+      if(WS_URL){
+        const httpURL = new URL(WS_URL.replace(/^wss?:\/\//, m => m==='wss://' ? 'https://' : 'http://'));
+        return httpURL.origin + '/api';
+      }
+    }catch(e){}
+    return location.origin + '/api';
+  })();
+
+  // โหลดชื่อก่อน render
+  await loadPumpNames(API_BASE);
 
   // หลังได้รับ update: อัปเดต state -> คำนวณ cohort -> repaint ทุกการ์ดที่แสดง
   function applyUpdate(msg){
@@ -513,15 +556,30 @@
     visibleIds.forEach(id=> applyStateToCard(id, state[id]||null));
   }
 
+  // รองรับข้อความชนิด pumpNames เพื่ออัปเดตชื่อสด
+  function handleMsg(data){
+    if(Array.isArray(data)){ data.forEach(handleMsg); return; }
+    if(data && typeof data === 'object'){
+      if(data.type === 'pumpNames' && data.map){
+        pumpNames = data.map || {};
+        try{ localStorage.setItem(PN_KEY, JSON.stringify(pumpNames)); }catch(e){}
+        visibleIds.forEach(updateCardTitle);
+        return;
+      }
+      applyUpdate(data);
+    }
+  }
+
   function connectWS(){
     if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
     try{ ws=new WebSocket(WS_URL); }catch(e){ console.warn('WS construct error',e); setLive('bad'); return; }
     ws.onopen=()=>{ backoff=2000; setLive('ok'); console.log('WS connected'); };
-    ws.onmessage=(ev)=>{ try{ const data=JSON.parse(ev.data); applyUpdate(data); }catch(e){ console.warn('WS parse fail',e); } };
+    ws.onmessage=(ev)=>{ try{ const data=JSON.parse(ev.data); handleMsg(data); }catch(e){ console.warn('WS parse fail',e); } };
     ws.onclose =()=>{ setLive('bad'); clearTimeout(wsTimer); wsTimer=setTimeout(connectWS, backoff); backoff=Math.min(backoff*1.8, 20000); };
     ws.onerror =(e)=> console.warn('WS error', e);
   }
-  connectWS(); setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
+  connectWS();
+  setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
 
   /* ---------- Initial render ---------- */
   render();
