@@ -33,10 +33,10 @@
     }
     .muted{color:var(--muted); font-size:12px}
 
-    /* Grid + Card (ทำให้ใบใหญ่ขึ้น) */
+    /* Grid + Card */
     .grid{
       display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); /* เดิม ~340 → ขยาย */
+      grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
       gap:14px;
       padding:10px 16px 28px
     }
@@ -44,20 +44,33 @@
       background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;
       padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.32);
     }
-    .card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .id{font-weight:700}
+    .card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+    .title{display:flex;flex-direction:column}
+    .id{font-weight:800}
     .sub{font-size:12px;color:var(--muted)}
-    .status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.28);}
-    .on{color:var(--ok);border-color:var(--ok)} .off{color:var(--bad);border-color:var(--bad)}
+    /* meta pills shown after pump title */
+    .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+    .pill{
+      background:#0f172a;border:1px solid rgba(148,163,184,.28);color:#e5e7eb;
+      padding:4px 10px;border-radius:999px;font-size:12px;display:inline-flex;gap:6px;align-items:baseline;
+    }
+    .pill .k{opacity:.8}
+    .pill .v{font-weight:800}
+    .pill.st.on{color:var(--ok);border-color:var(--ok)}
+    .pill.st.off{color:var(--bad);border-color:var(--bad)}
+    .pill.hl.ok{color:var(--ok);border-color:var(--ok)}
+    .pill.hl.warn{color:var(--warn);border-color:var(--warn)}
+    .pill.hl.bad{color:var(--bad);border-color:var(--bad)}
+    .pill.hl.off{color:#94a3b8;border-color:#94a3b8}
 
-    /* แถวในการ์ด = 3 คอลัมน์: Amp | Flow | KPI  */
+    /* แถวในการ์ด = 2 คอลัมน์: Amp | Flow */
     .row{
       display:grid;
-      grid-template-columns:minmax(200px,1fr) minmax(200px,1fr) minmax(200px,0.9fr);
+      grid-template-columns:minmax(200px,1fr) minmax(200px,1fr);
       gap:16px; align-items:start;
     }
 
-    /* Gauge (SVG half-donut) — ขยายให้เต็มคอลัมน์ */
+    /* Gauge (SVG half-donut) */
     .gauge{--clr:#93c5fd; --p:0; width:100%; aspect-ratio: 5/3; position:relative}
     .gauge svg{width:100%;height:100%;display:block}
     .gauge .track{stroke:#2a3344; stroke-width:12; stroke-linecap:round; fill:none; opacity:.7}
@@ -67,22 +80,14 @@
     .gauge .needle{stroke:var(--clr); stroke-width:2.8; stroke-linecap:round; transform-origin:50px 50px; transition:transform .25s ease, opacity .2s}
     .gauge .hub{fill:#0f172a; stroke:#64748b; stroke-width:.9}
     .gauge .center{position:absolute; inset:auto 0 14px 0; text-align:center; pointer-events:none}
-    .gauge .val{font-weight:800; font-size:22px; line-height:1}   /* ตัวเลขกลางใหญ่ขึ้น */
+    .gauge .val{font-weight:800; font-size:22px; line-height:1}
     .gauge .unit{font-size:12px; color:var(--muted); margin-top:2px}
     .gauge .limits{position:absolute; left:0; right:0; bottom:-2px; display:flex; justify-content:space-between; font-size:12px; color:#a7b0bf}
 
-    /* KPI block */
-    .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-    .kv{background:#0c172a;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:10px;min-height:60px}
-    .kv .k{font-size:12px;color:#a7b0bf;margin-bottom:3px}
-    .kv .v{font-weight:700; font-size:15px}
     .crit-ok{outline:2px solid rgba(34,197,94,.24)} .crit-warn{outline:2px solid rgba(251,191,36,.22)} .crit-bad{outline:2px solid rgba(239,68,68,.22)}
 
-    /* บีบลง 2 คอลัมน์บนจอเล็ก */
     @media (max-width: 1100px){
       .grid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
-      .row{grid-template-columns:1fr 1fr}
-      .kpi{grid-column:1 / -1}
     }
     footer{padding:8px 16px 16px;color:#9aa3b2;font-size:12px}
   </style>
@@ -123,18 +128,17 @@
   </div>
 
   <div id="grid" class="grid"></div>
-  <footer><span class="muted">เกจครึ่งวงกลมสไตล์ Blynk • ตั้งค่า min/max แยกเกจได้ (กำหนดในโค้ด)</span></footer>
+  <footer><span class="muted">เกจครึ่งวงกลมสไตล์ Blynk • ค่า min/max ตั้งแยกแต่ละเกจได้</span></footer>
 
   <script type="module">
-    /* -------------------- CONFIG: min/max ต่อปั๊ม -------------------- */
+    /* ---------- CONFIG: min/max ต่อปั๊ม ---------- */
     const GAUGE_DEFAULT = {ampMin:0, ampMax:15, flowMin:0, flowMax:220};
     const GAUGE_CFG = {
-      // ตัวอย่าง:
       // 'F1-R2-P1': { ampMax:60, flowMax:1000 },
-      // 'F2-R3-P2': { flowMin:0, flowMax:1800 }
+      // 'F2-R3-P2': { flowMax:1800 }
     };
 
-    /* -------------------- WS resolver -------------------- */
+    /* ---------- WS resolver ---------- */
     async function resolveWS(){
       const params = new URLSearchParams(location.search);
       let url = params.get('ws') || localStorage.getItem('wsEndpoint');
@@ -149,7 +153,7 @@
       return url;
     }
 
-    /* -------------------- Layout mirror -------------------- */
+    /* ---------- Layout mirror ---------- */
     const PLAN_ROOMS=[
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
@@ -170,13 +174,12 @@
       FLOORS.push(floor);
     });
 
-    /* -------------------- UI -------------------- */
+    /* ---------- UI ---------- */
     const grid = document.getElementById('grid');
     const liveBadge = document.getElementById('liveBadge');
     const fFloor = document.getElementById('fFloor');
     const fRoom  = document.getElementById('fRoom');
     const fText  = document.getElementById('fText');
-
     const PUMP_IDS = FLOORS.flatMap(f=> f.rooms.flatMap(r=> r.pumps));
 
     function allRoomsOf(floorId){
@@ -193,7 +196,7 @@
     fText .addEventListener('input', render);
     rebuildRoomFilter();
 
-    /* -------------------- Gauge (SVG) -------------------- */
+    /* ---------- Gauge (SVG) ---------- */
     function gaugeHTML(kind,id,unit,min,max){
       return `
       <div class="gauge" id="g-${kind}-${id}" style="--clr:${kind==='amp'?'#93c5fd':'#22c55e'}; --p:0">
@@ -211,23 +214,30 @@
       </div>`;
     }
 
+    function headMetaHTML(id){
+      return `
+        <div class="meta" id="meta-${id}">
+          <span class="pill st" id="h-st-${id}">—</span>
+          <span class="pill"><span class="k">Amp</span><span class="v" id="h-amp-${id}">0.0</span><span class="k">A</span></span>
+          <span class="pill"><span class="k">Flow</span><span class="v" id="h-flow-${id}">0</span><span class="k">L/min</span></span>
+          <span class="pill hl" id="h-hl-${id}">—</span>
+        </div>`;
+    }
+
     function cardHTML(id){
       const [floor, room] = id.split('-').slice(0,2);
       const cfg = {...GAUGE_DEFAULT, ...(GAUGE_CFG[id]||{})};
       return `<div class="card" id="card-${id}">
         <div class="head">
-          <div><div class="id">${id}</div><div class="sub">${floor}/${room}</div></div>
-          <span class="status" id="st-${id}">—</span>
+          <div class="title">
+            <div class="id">${id}</div>
+            <div class="sub">${floor}/${room}</div>
+          </div>
+          ${headMetaHTML(id)}
         </div>
         <div class="row">
           ${gaugeHTML('amp',id,'Amp',cfg.ampMin,cfg.ampMax)}
           ${gaugeHTML('flow',id,'Flow',cfg.flowMin,cfg.flowMax)}
-          <div class="kpi">
-            <div class="kv"><div class="k">สถานะ</div><div class="v" id="kv-run-${id}">—</div></div>
-            <div class="kv"><div class="k">สุขภาพ</div><div class="v" id="kv-hlth-${id}">—</div></div>
-            <div class="kv"><div class="k">Amp (A)</div><div class="v" id="kv-amp-${id}">0.0</div></div>
-            <div class="kv"><div class="k">Flow (L/min)</div><div class="v" id="kv-flow-${id}">0</div></div>
-          </div>
         </div>
       </div>`;
     }
@@ -245,7 +255,7 @@
       ids.forEach(id=> applyStateToCard(id, state[id]||null, seen[id]===true));
     }
 
-    /* -------------------- State & paint -------------------- */
+    /* ---------- State & paint ---------- */
     const state = {};   // id -> {enabled, amp, flow}
     const seen  = {};   // id -> เคยได้ค่าจริง
     const AMP_RULE = {warn:8, bad:10};
@@ -291,38 +301,44 @@
     function applyStateToCard(id, s, hasData){
       const card = document.getElementById('card-'+id); if(!card) return;
       const cfg = {...GAUGE_DEFAULT, ...(GAUGE_CFG[id]||{})};
-      const st = document.getElementById('st-'+id);
-      const run = document.getElementById('kv-run-'+id);
-      const hl  = document.getElementById('kv-hlth-'+id);
-      const ka  = document.getElementById('kv-amp-'+id);
-      const kf  = document.getElementById('kv-flow-'+id);
+
+      // header pills
+      const hst   = document.getElementById('h-st-'+id);
+      const hamp  = document.getElementById('h-amp-'+id);
+      const hflow = document.getElementById('h-flow-'+id);
+      const hhl   = document.getElementById('h-hl-'+id);
 
       if(!s){
-        st.textContent='—'; st.className='status';
-        run.textContent='—'; hl.textContent='—'; ka.textContent='0.0'; kf.textContent='0';
+        hst.textContent='—'; hst.className='pill st';
+        hamp.textContent='0.0'; hflow.textContent='0';
+        hhl.textContent='—'; hhl.className='pill hl';
         paintGauge('amp',id,0,cfg,false,false);
         paintGauge('flow',id,0,cfg,false,false);
         card.classList.remove('crit-ok','crit-warn','crit-bad');
         return;
       }
-      st.textContent = s.enabled? 'ON':'OFF';
-      st.className = 'status ' + (s.enabled? 'on':'off');
-      run.textContent = s.enabled? 'RUN':'STOP';
-      ka.textContent = (s.amp||0).toFixed(1);
-      kf.textContent = Math.round(s.flow||0);
 
-      paintGauge('amp',id,s.amp,cfg,hasData,s.enabled);
-      paintGauge('flow',id,s.flow,cfg,hasData,s.enabled);
+      // pills content
+      hst.textContent = s.enabled ? 'ON • RUN' : 'OFF • STOP';
+      hst.className = 'pill st ' + (s.enabled?'on':'off');
+      hamp.textContent  = (s.amp||0).toFixed(1);
+      hflow.textContent = Math.round(s.flow||0);
 
+      // gauges
+      paintGauge('amp', id, s.amp,  cfg, hasData, s.enabled);
+      paintGauge('flow',id, s.flow, cfg, hasData, s.enabled);
+
+      // health + outline
       const sev = sevFrom(s);
-      hl.textContent = (sev==='OK'?'ปกติ':sev==='WARN'?'เตือน':sev==='BAD'?'ผิดปกติ':'ปิด');
+      hhl.textContent = (sev==='OK'?'ปกติ':sev==='WARN'?'เตือน':sev==='BAD'?'ผิดปกติ':'ปิด');
+      hhl.className = 'pill hl ' + (sev==='OK'?'ok':sev==='WARN'?'warn':sev==='BAD'?'bad':'off');
       card.classList.remove('crit-ok','crit-warn','crit-bad');
       if(sev==='OK') card.classList.add('crit-ok');
       else if(sev==='WARN') card.classList.add('crit-warn');
       else if(sev==='BAD') card.classList.add('crit-bad');
     }
 
-    /* -------------------- Back & Logout -------------------- */
+    /* ---------- Back & Logout ---------- */
     document.getElementById('btnBack').addEventListener('click', ()=>{
       const ref = document.referrer;
       try{ if(ref && new URL(ref).origin === location.origin){ history.back(); return; } }catch(e){}
@@ -339,7 +355,7 @@
       location.href = './login.html?next=' + next;
     });
 
-    /* -------------------- WS live -------------------- */
+    /* ---------- WS live ---------- */
     const WS_URL = await resolveWS();
     console.log('WS endpoint:', WS_URL);
     let ws, wsTimer, backoff=2000;
