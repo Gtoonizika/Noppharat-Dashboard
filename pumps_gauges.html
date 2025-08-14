@@ -9,7 +9,7 @@
     --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
     --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --ring:#1f2937;
     --chip:#111827; --chip-b:#2c3444;
-    --tileH: 248px; /* ความสูงการ์ดให้คงที่ ลดการขยับ */
+    --tileH: 248px;
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
@@ -19,7 +19,6 @@
     color:var(--text);
   }
 
-  /* Topbar */
   #topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
     gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);border-bottom:1px solid rgba(148,163,184,.18)}
   #brand{font-weight:800;letter-spacing:.3px}
@@ -29,24 +28,15 @@
   #liveBadge.ok{color:var(--ok);border-color:var(--ok)}
   #liveBadge.bad{color:var(--bad);border-color:var(--bad)}
 
-  /* Filters */
   #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
   select,input[type="search"]{background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
     border-radius:10px;padding:8px 10px}
 
-  /* Grid */
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
-    gap:14px; padding:10px 16px 28px
-  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;padding:10px 16px 28px}
   .card{
-    background:var(--card);
-    border:1px solid rgba(148,163,184,.2);
-    border-radius:14px; padding:12px;
-    box-shadow:0 10px 30px rgba(0,0,0,.32);
-    min-height:var(--tileH);
-    display:flex; flex-direction:column;
+    background:var(--card);border:1px solid rgba(148,163,184,.2);
+    border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.32);
+    min-height:var(--tileH);display:flex;flex-direction:column;
   }
   .card[data-sev="OK"]   {outline:2px solid rgba(34,197,94,.22)}
   .card[data-sev="WARN"] {outline:2px solid rgba(251,191,36,.20)}
@@ -65,28 +55,22 @@
   .pill.sev-bad  {background:rgba(239,68,68,.12);  border-color:rgba(239,68,68,.38);  color:#fca5a5}
   .pill.sev-off  {background:rgba(148,163,184,.10);border-color:rgba(148,163,184,.28);color:#cbd5e1}
 
-  /* Gauge area */
   .row{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;margin-top:6px}
   .gwrap{display:flex;gap:14px;align-items:center}
-  .g{
-    width:158px; height:108px; position:relative;
-  }
+  .g{width:158px;height:108px;position:relative}
   .g svg{display:block;width:100%;height:100%}
   .g .centerV{position:absolute;left:0;right:0;top:38%;text-align:center;font-weight:800}
   .g .unit{position:absolute;left:0;right:0;top:60%;text-align:center;font-size:11px;color:var(--muted)}
   .g .minLbl{position:absolute;left:2px;bottom:2px;font-size:10px;color:var(--muted)}
   .g .maxLbl{position:absolute;right:2px;bottom:2px;font-size:10px;color:var(--muted)}
-  .g .needle{transform-origin:50% 100%; transition:transform .25s ease}
+  .g .needle{transform-origin:50% 100%;transition:transform .25s ease}
 
-  /* Side chips (Amp/Flow quick view) */
   .chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .chip{background:var(--chip);border:1px solid var(--chip-b);padding:6px 8px;border-radius:10px;font-size:12px;color:#cbd5e1}
 
-  /* Gear button */
   .gear{border:0;background:#1f2937;color:#cbd5e1;width:28px;height:28px;border-radius:8px;cursor:pointer}
   .gear:hover{filter:brightness(1.1)}
 
-  /* Settings modal */
   #modal{position:fixed;inset:0;background:rgba(2,6,23,.80);display:none;align-items:center;justify-content:center;z-index:60}
   #dlg{background:#0f172a;border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:14px;min-width:320px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
   #dlg h3{margin:0 0 10px}
@@ -101,7 +85,6 @@
 </head>
 <body>
 <script>
-/* -------- Session guard -------- */
 (function(){
   try{
     const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
@@ -127,9 +110,7 @@
 
 <div id="filters">
   <select id="fFloor">
-    <option value="">ทุกชั้น</option>
-    <option>F1</option>
-    <option>F2</option>
+    <option value="">ทุกชั้น</option><option>F1</option><option>F2</option>
   </select>
   <select id="fRoom"><option value="">ทุกห้อง</option></select>
   <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1">
@@ -137,7 +118,7 @@
 </div>
 
 <div id="grid" class="grid"></div>
-<footer><span class="muted">เกจสไตล์ Blynk + เข็ม • ตั้งค่า min/max แยกรายตัว (จำค่าไว้)</span></footer>
+<footer><span class="muted">เกจสไตล์ Blynk + เข็ม • ตั้งค่า min/max แยกรายตัว (จำค่าไว้) • สุขภาพอิง AI (ช่วง + ค่าเฉลี่ย/ส่วนเบี่ยงเบน)</span></footer>
 
 <!-- Modal ตั้งค่า -->
 <div id="modal">
@@ -166,7 +147,6 @@
 </div>
 
 <script type="module">
-  /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
   async function resolveWS(){
     const params = new URLSearchParams(location.search);
     let url = params.get('ws') || localStorage.getItem('wsEndpoint');
@@ -183,7 +163,6 @@
     return url;
   }
 
-  /* ---------- Pump layout mirror (match 3D page) ---------- */
   const PLAN_ROOMS=[
     [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
     [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
@@ -195,16 +174,13 @@
     rooms.forEach((r,ri)=>{
       const count=(r.w*r.d>260)?3:2;
       const room={id:`R${ri+1}`, pumps:[]};
-      for(let i=0;i<count;i++){
-        room.pumps.push(`${floorId}-R${ri+1}-P${i+1}`);
-      }
+      for(let i=0;i<count;i++) room.pumps.push(`${floorId}-R${ri+1}-P${i+1}`);
       floor.rooms.push(room);
     });
     FLOORS.push(floor);
   });
   const PUMP_IDS = FLOORS.flatMap(f=> f.rooms.flatMap(r=> r.pumps));
 
-  /* ---------- UI refs ---------- */
   const grid = document.getElementById('grid');
   const liveBadge = document.getElementById('liveBadge');
   const fFloor = document.getElementById('fFloor');
@@ -225,7 +201,7 @@
   fText .addEventListener('input', render);
   rebuildRoomFilter();
 
-  /* ---------- Config per pump (min/max) ---------- */
+  /* --------- per-pump config --------- */
   let gaugeCfg = {};
   try{ gaugeCfg = JSON.parse(localStorage.getItem('gaugeCfgV1')||'{}') || {}; }catch(e){}
   function getCfg(id){
@@ -242,41 +218,69 @@
     try{ localStorage.setItem('gaugeCfgV1', JSON.stringify(gaugeCfg)); }catch(e){}
   }
 
-  /* ---------- Severity & colors ---------- */
-  // กฎคร่าว ๆ ปรับได้
-  const AMP_RULE  = { warn: 8,  bad: 10 };
-  const FLOW_RULE = { warn: 100, bad: 80 };
+  /* ---------- “AI” health (ช่วง + cohort stats) ---------- */
+  const ARC_LEN = Math.PI*90;
+  const state = {};                // id -> {enabled, amp, flow}
+  let cohort = {mA:0,sA:0,mF:0,sF:0,n:0};  // mean/std ของปั๊มที่ RUN
 
-  function severityOf(s){
-    if(!s || !s.enabled) return 'OFF';
-    const A = +s.amp || 0, F = +s.flow || 0;
-    if (A > AMP_RULE.bad || F < FLOW_RULE.bad)  return 'BAD';
-    if (A > AMP_RULE.warn || F < FLOW_RULE.warn) return 'WARN';
-    return 'OK';
-  }
-  function colorForSev(sev){
-    return sev==='BAD'? '#ef4444' : sev==='WARN'? '#fbbf24' : '#22c55e';
-  }
-
-  /* ---------- Gauge helpers ---------- */
-  const ARC_LEN = Math.PI*90; // ความยาวเส้นทางประมาณ (ใช้กับ dasharray)
   function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
   function ratio(v,min,max){ return (clamp(v,min,max)-min)/Math.max(1e-6,(max-min)); }
-  function pct100(v,min,max){ return Math.round(ratio(v,min,max)*100); }
   function angleDeg(v,min,max){ return -90 + ratio(v,min,max)*180; }
+  function colorForSev(sev){ return sev==='BAD'? '#ef4444' : sev==='WARN'? '#fbbf24' : '#22c55e'; }
 
-  /* ---------- Card HTML ---------- */
-  function gaugeHTML(id, kind /* 'amp'|'flow' */){
+  function recomputeCohort(){
+    const rows = Object.entries(state).map(([id,s])=>({id,...s})).filter(r=>r.enabled && isFinite(r.amp) && isFinite(r.flow));
+    const n = rows.length;
+    if(!n){ cohort={mA:0,sA:0,mF:0,sF:0,n:0}; return; }
+    const mA = rows.reduce((a,r)=>a+ +r.amp,0)/n;
+    const mF = rows.reduce((a,r)=>a+ +r.flow,0)/n;
+    const sA = Math.sqrt(rows.reduce((a,r)=>a+Math.pow(+r.amp-mA,2),0)/n);
+    const sF = Math.sqrt(rows.reduce((a,r)=>a+Math.pow(+r.flow-mF,2),0)/n);
+    cohort = {mA,sA,mF,sF,n};
+  }
+
+  // กติกา:
+  // - ใช้สัดส่วนช่วงของเกจ (R) + z-score จาก cohort
+  // - BAD: (กระแสสูงมาก หรือ zA>1.5) ร่วมกับ (โฟลว์ต่ำมาก หรือ zF>1.0)
+  // - WARN: อย่างใดอย่างหนึ่งเข้าโซนเตือน, หรือ pattern เซนเซอร์ผิดปกติ
+  function severityOf(id, s){
+    if(!s || !s.enabled) return 'OFF';
+    const cfg = getCfg(id);
+    const R_A = ratio(+s.amp,  cfg.minAmp,  cfg.maxAmp);  // 0..1
+    const R_F = ratio(+s.flow, cfg.minFlow, cfg.maxFlow); // 0..1 (ยิ่งต่ำยิ่งน่าห่วง)
+    const zA  = cohort.sA>0 ? (+s.amp - cohort.mA)/cohort.sA : 0; // สูง + คือกระแสสูงกว่ากลุ่ม
+    const zF  = cohort.sF>0 ? (cohort.mF - +s.flow)/cohort.sF : 0; // สูง + คือโฟลว์ต่ำกว่ากลุ่ม
+
+    const overCurrHard = R_A >= 0.90;           // ≥90% ของช่วงเกจ
+    const overCurrSoft = R_A >= 0.75;
+    const overCurrZBad = zA > 1.5;
+    const overCurrZWrn = zA > 0.8;
+
+    const lowFlowHard  = R_F <= 0.10;           // ≤10% ของช่วง
+    const lowFlowSoft  = R_F <= 0.25;
+    const lowFlowZBad  = zF > 1.0;
+    const lowFlowZWrn  = zF > 0.6;
+
+    // sensor anomaly: กระแสเกือบ 0 แต่มีโฟลว์
+    const sensorSusp   = (R_A < 0.02 && R_F > 0.2);
+
+    if( (overCurrHard||overCurrZBad) && (lowFlowHard||lowFlowZBad) ) return 'BAD';
+    if( overCurrHard || lowFlowHard ) return 'BAD';
+    if( (overCurrSoft||overCurrZWrn) && (lowFlowSoft||lowFlowZWrn) ) return 'BAD'; // รวมเสี่ยงสองด้าน
+    if( overCurrSoft||overCurrZWrn||lowFlowSoft||lowFlowZWrn||sensorSusp ) return 'WARN';
+    return 'OK';
+  }
+
+  /* ---------- UI building ---------- */
+  let visibleIds = []; // ids ที่ render อยู่ตอนนี้
+
+  function gaugeHTML(id, kind){
     const gid = `${kind}-${id}`;
     return `
       <div class="g" id="g-${gid}">
         <svg viewBox="0 0 100 60" aria-hidden="true">
-          <!-- base arc -->
           <path d="M10,50 A40,40 0 0 1 90,50" stroke="#2b3546" stroke-width="10" fill="none" stroke-linecap="round"/>
-          <!-- value arc -->
-          <path id="arc-${gid}" d="M10,50 A40,40 0 0 1 90,50" stroke="#22c55e" stroke-width="10" fill="none" stroke-linecap="round"
-            stroke-dasharray="0 ${ARC_LEN}" />
-          <!-- needle -->
+          <path id="arc-${gid}" d="M10,50 A40,40 0 0 1 90,50" stroke="#22c55e" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="0 ${ARC_LEN}"/>
           <g id="needle-${gid}" class="needle" transform="rotate(-90 50 50)">
             <line x1="50" y1="50" x2="50" y2="16" stroke="white" stroke-width="2"/>
             <circle cx="50" cy="50" r="3" fill="#e5e7eb"/>
@@ -322,7 +326,6 @@
     </div>`;
   }
 
-  /* ---------- Render grid ---------- */
   function render(){
     const q = (fText.value||'').trim().toLowerCase();
     const ff = fFloor.value, rr = fRoom.value;
@@ -332,14 +335,11 @@
       if(rr && !id.includes('-'+rr+'-')) return false;
       return true;
     });
+    visibleIds = ids.slice();
     grid.innerHTML = ids.map(cardHTML).join('');
-
-    // Hook: gear buttons
     ids.forEach(id=>{
       document.getElementById('gear-'+id)?.addEventListener('click', ()=> openSettings(id));
-      // เติม min/max บนเกจ
       applyMinMaxLabels(id);
-      // ถ้ามี state เก็บอยู่แล้ว ให้ทาสี/ขึ้นค่า
       applyStateToCard(id, state[id]||null);
     });
   }
@@ -358,7 +358,7 @@
     if(rng) rng.textContent = `${cfg.minAmp}-${cfg.maxAmp}A / ${cfg.minFlow}-${cfg.maxFlow}L`;
   }
 
-  /* ---------- Modal settings ---------- */
+  /* ---------- Modal ---------- */
   const modal = document.getElementById('modal');
   const dlgId = document.getElementById('dlgId');
   const ampMin = document.getElementById('ampMin');
@@ -388,15 +388,12 @@
     };
     saveCfg(editingId, cfg);
     modal.style.display='none';
-    // อัปเดต label บนเกจ + ทาสีใหม่
     applyMinMaxLabels(editingId);
     if(state[editingId]) applyStateToCard(editingId, state[editingId]);
   });
   modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
 
-  /* ---------- State & paint ---------- */
-  const state = {}; // id -> {enabled, amp, flow}
-
+  /* ---------- Paint ---------- */
   function setHealthPill(id, sev){
     const el = document.getElementById('sev-'+id);
     if(!el) return;
@@ -405,14 +402,12 @@
     const card = document.getElementById('card-'+id);
     if(card) card.setAttribute('data-sev', sev);
   }
-
   function setRunPill(id, enabled){
     const el = document.getElementById('run-'+id);
     if(!el) return;
     el.textContent = enabled? 'ON • RUN' : 'OFF • STOP';
     el.className = 'pill' + (enabled?'':' sev-off');
   }
-
   function paintGauge(id, kind, val, min, max, sev){
     const gid = `${kind}-${id}`;
     const p   = document.getElementById('arc-'+gid);
@@ -423,10 +418,9 @@
 
     if(minL) minL.textContent = min;
     if(maxL) maxL.textContent = max;
-
     if(!p || !vn || !ndl) return;
 
-    if(val==null){ // ไม่มีค่า
+    if(val==null){
       p.setAttribute('stroke','#2b3546');
       p.setAttribute('stroke-dasharray', `0 ${ARC_LEN}`);
       vn.textContent='0';
@@ -444,21 +438,18 @@
   function applyStateToCard(id, s){
     const card = document.getElementById('card-'+id);
     if(!card) return;
-
     const chipA= document.getElementById('chipA-'+id);
     const chipF= document.getElementById('chipF-'+id);
     const ka  = document.getElementById('ka-'+id);
     const kf  = document.getElementById('kf-'+id);
 
     if(!s){
-      setRunPill(id,false);
-      setHealthPill(id,'OFF');
+      setRunPill(id,false); setHealthPill(id,'OFF');
       paintGauge(id,'amp',null,0,15,'OFF');
       paintGauge(id,'flow',null,0,220,'OFF');
       if(chipA) chipA.textContent='Amp 0.0 A';
       if(chipF) chipF.textContent='Flow 0 L/min';
-      if(ka) ka.textContent='0.0';
-      if(kf) kf.textContent='0';
+      if(ka) ka.textContent='0.0'; if(kf) kf.textContent='0';
       return;
     }
 
@@ -466,11 +457,10 @@
     const amp  = +s.amp  || 0;
     const flow = +s.flow || 0;
     const enabled = !!s.enabled;
-    const sev = severityOf(s);
+    const sev = severityOf(id, s);
 
     setRunPill(id, enabled);
     setHealthPill(id, sev);
-
     paintGauge(id,'amp',  enabled?amp:null,  cfg.minAmp,  cfg.maxAmp,  sev);
     paintGauge(id,'flow', enabled?flow:null, cfg.minFlow, cfg.maxFlow, sev);
 
@@ -483,9 +473,7 @@
   /* ---------- Back & Logout ---------- */
   document.getElementById('btnBack').addEventListener('click', ()=>{
     const ref = document.referrer;
-    try{
-      if(ref && new URL(ref).origin === location.origin){ history.back(); return; }
-    }catch(e){}
+    try{ if(ref && new URL(ref).origin === location.origin){ history.back(); return; } }catch(e){}
     const q = new URLSearchParams(location.search);
     const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
     const home = localStorage.getItem('home3D') || './index.html';
@@ -510,6 +498,8 @@
     else if(state==='bad'){ liveBadge.classList.add('bad'); liveBadge.textContent='LIVE: disconnected'; }
     else liveBadge.textContent = text || 'LIVE: idle';
   }
+
+  // หลังได้รับ update: อัปเดต state -> คำนวณ cohort -> repaint ทุกการ์ดที่แสดง
   function applyUpdate(msg){
     if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
     const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
@@ -517,8 +507,12 @@
     if(typeof m.enabled==='boolean') state[m.id].enabled = m.enabled;
     if(typeof m.amp==='number') state[m.id].amp = m.amp;
     if(typeof m.flow==='number') state[m.id].flow = m.flow;
-    applyStateToCard(m.id, state[m.id]);
+
+    // คำนวณสถิติใหม่แล้ว repaint ทั้งชุดที่มองเห็น
+    recomputeCohort();
+    visibleIds.forEach(id=> applyStateToCard(id, state[id]||null));
   }
+
   function connectWS(){
     if(!WS_URL){ setLive(null,'LIVE: no ws configured'); return; }
     try{ ws=new WebSocket(WS_URL); }catch(e){ console.warn('WS construct error',e); setLive('bad'); return; }
@@ -531,6 +525,8 @@
 
   /* ---------- Initial render ---------- */
   render();
+  // เผื่อมี state ตั้งต้นจากที่อื่น เรียกคำนวณ cohort อีกครั้ง
+  recomputeCohort();
 </script>
 </body>
 </html>
