@@ -62,6 +62,7 @@
     @media (max-width:900px){#panel{width:280px} #panelToggle{left:312px}}
   </style>
 
+  <!-- import map -->
   <script type="importmap">
   {"imports":{
     "three":"https://unpkg.com/three@0.158.0/build/three.module.js",
@@ -201,53 +202,23 @@
         if(url) localStorage.setItem('wsEndpoint', url);
         return url;
       }
-
-      /* ---------- คำนวณ API_BASE จาก WS หรือ ?api= ---------- */
       const WS_URL = await resolveWS();
-      const q = new URLSearchParams(location.search);
-      const apiOverride = q.get('api'); // optional, e.g. ?api=https://your-tunnel
-      const API_BASE = (()=> {
-        try{
-          if(apiOverride){
-            const u = new URL(apiOverride);
-            // ถ้าใส่มาแบบเต็ม /api แล้ว ก็ใช้เลย; ถ้าไม่มีก็เติม /api ให้
-            return u.pathname.endsWith('/api') ? apiOverride.replace(/\/$/,'') : (u.origin + '/api');
-          }
-          if(WS_URL){
-            const httpURL = new URL(WS_URL.replace(/^wss?:\/\//, m => m==='wss://' ? 'https://' : 'http://'));
-            return httpURL.origin + '/api';
-          }
-        }catch(e){}
-        return location.origin + '/api';
-      })();
 
-      /* ---------- storage + REST helpers ---------- */
-      const PN_KEY='pumpNamesCacheV1';
-      let pumpNames={};
+      /* ---------- Shared pump names in localStorage ---------- */
+      const PN_KEY = 'pumpNamesCacheV1';
+      let pumpNames = {};
+      function loadPumpNamesLocal(){
+        try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY) || '{}'); } catch(e){ pumpNames = {}; }
+      }
+      function savePumpName(id, newName){
+        pumpNames = { ...pumpNames, [id]: (newName||'').trim() };
+        localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
+        // note: storage event ไม่ยิงในแท็บปัจจุบัน แต่แท็บอื่น ๆ จะได้รับและอัปเดตเอง
+      }
       const prettyName = (id)=> pumpNames[id] || id;
 
-      async function loadPumpNames(){
-        try{ pumpNames = JSON.parse(localStorage.getItem(PN_KEY)||'{}'); }catch(e){}
-        try{
-          const res = await fetch(`${API_BASE}/pump-names`, {cache:'no-store'});
-          if(res.ok){
-            pumpNames = await res.json();
-            localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-          }
-        }catch(e){ console.warn('GET /pump-names fail', e); }
-      }
-      async function savePumpName(id, newName){
-        const res = await fetch(`${API_BASE}/pump-names/${encodeURIComponent(id)}`, {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({name:(newName||'').trim()})
-        });
-        if(!res.ok) throw new Error('POST /pump-names/:id failed');
-        pumpNames[id] = (newName||'').trim();
-        localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-      }
-
-      /* ---------- โหลดชื่อก่อนสร้างฉาก ---------- */
-      await loadPumpNames();
+      // โหลดชื่อครั้งแรก
+      loadPumpNamesLocal();
 
       /* ---------- UI helpers ---------- */
       const liveBadge = document.getElementById('liveBadge');
@@ -600,18 +571,15 @@
       window.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ pumpInfoVisible=false; pumpInfo.style.display='none'; activePump=null; }});
       renderer.domElement.addEventListener('dblclick',(ev)=>{ const obj=pickPump(ev); if(obj){ const target=new THREE.Vector3(); obj.getWorldPosition(target); controls.target.copy(target); }});
 
-      // Save rename → REST
-      piRenameSave.addEventListener('click', async ()=>{
+      // Save rename → localStorage
+      piRenameSave.addEventListener('click', ()=>{
         if(!activePump) return;
         const id = activePump.userData.state.id;
         const nv = (piRenameInput.value||'').trim();
-        try{
-          await savePumpName(id, nv);
-          // repaint labels + panel + popup title
-          renderPumpLabel(activePump.userData.state);
-          rebuildPanel();
-          piTitle.textContent = `${prettyName(id)}  (${id})`;
-        }catch(e){ alert('บันทึกชื่อไม่สำเร็จ'); }
+        savePumpName(id, nv);
+        renderPumpLabel(activePump.userData.state);
+        rebuildPanel();
+        piTitle.textContent = `${prettyName(id)}  (${id})`;
       });
 
       /* ---------- Status / settings / AI ---------- */
@@ -795,7 +763,23 @@
 
       window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
 
-      /* ---------- LIVE WebSocket ---------- */
+      /* ---------- ช่วยอัปเดตชื่อเมื่อมีการเปลี่ยนจากแท็บอื่น / WS ---------- */
+      function onPumpNamesChanged(){
+        pumpsAll.forEach(p=> renderPumpLabel(p.group.userData.state));
+        rebuildPanel();
+        if(activePump){
+          const id = activePump.userData.state.id;
+          piTitle.textContent = `${prettyName(id)}  (${id})`;
+        }
+      }
+      window.addEventListener('storage', (e)=>{
+        if(e.key === PN_KEY){
+          loadPumpNamesLocal();
+          onPumpNamesChanged();
+        }
+      });
+
+      /* ---------- LIVE WebSocket (ยังรองรับ data และ broadcast ชื่อ ถ้ามี) ---------- */
       console.log('WS endpoint:', WS_URL);
       let ws, wsTimer, backoff=2000;
       const updateWSIndicator=()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); };
@@ -813,12 +797,7 @@
         if(m.type==='pumpNames' && m.map){
           pumpNames = m.map;
           localStorage.setItem(PN_KEY, JSON.stringify(pumpNames));
-          pumpsAll.forEach(p=> renderPumpLabel(p.group.userData.state));
-          rebuildPanel();
-          if(activePump){
-            const id = activePump.userData.state.id;
-            piTitle.textContent = `${prettyName(id)}  (${id})`;
-          }
+          onPumpNamesChanged();
         }
       }
       function connectWS(){
