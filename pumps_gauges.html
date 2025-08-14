@@ -7,16 +7,18 @@
   <style>
     :root{
       --bg:#0b1220; --card:rgba(3,8,23,.86); --text:#e5e7eb; --muted:#94a3b8;
-      --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --accent:#93c5fd;
-      --ring:#1f2937;
+      --ok:#22c55e; --warn:#fbbf24; --bad:#ef4444; --accent:#93c5fd; --ring:#1f2937;
     }
     *{box-sizing:border-box} html,body{height:100%;margin:0}
-    body{background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);
-         font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-         color:var(--text);}
+    body{
+      background:radial-gradient(1200px 800px at 20% 10%,#0d1630,#0b1220 60%),var(--bg);
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      color:var(--text);
+    }
     /* Topbar */
     #topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;
-      gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);border-bottom:1px solid rgba(148,163,184,.18)}
+      gap:10px;padding:10px 16px;background:rgba(2,6,23,.78);backdrop-filter:blur(6px);
+      border-bottom:1px solid rgba(148,163,184,.18)}
     #brand{font-weight:800;letter-spacing:.3px}
     .actions{display:flex;gap:8px;align-items:center}
     .btn{border:0;padding:8px 12px;border-radius:10px;background:#1f2937;color:var(--text);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28)}
@@ -24,9 +26,12 @@
     #liveBadge.ok{color:var(--ok);border-color:var(--ok)}
     #liveBadge.bad{color:var(--bad);border-color:var(--bad)}
     /* Filters */
-    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
-    select,input[type="search"]{background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
-      border-radius:10px;padding:8px 10px}
+    #filters{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;align-items:center}
+    select,input[type="search"],input[type="number"]{
+      background:#0f172a;color:var(--text);border:1px solid rgba(148,163,184,.3);
+      border-radius:10px;padding:8px 10px
+    }
+    .mini{width:92px}
     /* Grid */
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:10px 16px 28px}
     .card{background:var(--card);border:1px solid rgba(148,163,184,.2);border-radius:14px;padding:12px 12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.32);}
@@ -36,23 +41,28 @@
     .status{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.28);}
     .on{color:var(--ok);border-color:var(--ok)} .off{color:var(--bad);border-color:var(--bad)}
     .gwrap{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:6px}
-    .gauge{--p:0; --clr:var(--accent); width:92px; height:92px; border-radius:50%;
-      background:conic-gradient(var(--clr) calc(var(--p)*1%), #243042 0);
-      display:grid; place-items:center; position:relative; box-shadow:inset 0 0 0 10px var(--ring);}
-    .gauge::after{content:""; position:absolute; inset:8px; background:#0b1220; border-radius:50%}
-    .gauge .v{position:relative; font-weight:800}
-    .gauge .u{position:relative; font-size:11px; color:var(--muted)}
     .kpi{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
     .kv{background:#0c172a;border:1px solid rgba(148,163,184,.18);border-radius:10px;padding:8px}
     .kv .k{font-size:11px;color:#a7b0bf} .kv .v{font-weight:700}
     .crit-ok{outline:2px solid rgba(34,197,94,.3)} .crit-warn{outline:2px solid rgba(251,191,36,.28)} .crit-bad{outline:2px solid rgba(239,68,68,.28)}
     .muted{color:var(--muted); font-size:12px}
     footer{padding:8px 16px 16px;color:#9aa3b2;font-size:12px}
+
+    /* ---------- Analog gauge with needle (SVG 270°) ---------- */
+    .gaugeA{--clr:#93c5fd; width:110px;height:110px;position:relative}
+    .gaugeA svg{width:110px;height:110px;display:block}
+    .gaugeA .bg{stroke:#243042;fill:none;stroke-width:12;stroke-linecap:round;opacity:.9}
+    .gaugeA .fg{stroke:var(--clr);fill:none;stroke-width:12;stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(147,197,253,.35))}
+    .gaugeA .needle{stroke:#e5e7eb;stroke-width:2;transform-origin:55px 55px;transition:transform .25s ease-out}
+    .gaugeA .hub{fill:#e5e7eb}
+    .gaugeA .center{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+    .gaugeA .v{font-weight:800}
+    .gaugeA .u{font-size:11px;color:var(--muted);margin-top:-2px}
   </style>
 </head>
 <body>
   <script>
-  // Session guard
+  // --- Session guard ---
   (function(){
     try{
       const s = JSON.parse(localStorage.getItem('sessionV1')||'null');
@@ -78,20 +88,26 @@
 
   <div id="filters">
     <select id="fFloor">
-      <option value="">ทุกชั้น</option>
-      <option>F1</option>
-      <option>F2</option>
+      <option value="">ทุกชั้น</option><option>F1</option><option>F2</option>
     </select>
     <select id="fRoom"><option value="">ทุกห้อง</option></select>
     <input id="fText" type="search" placeholder="ค้นหา ID เช่น F1-R1-P1">
-    <span class="muted">* ค่า Amp/Flow อัปเดตแบบเรียลไทม์จาก WebSocket</span>
+    <span class="muted">* LIVE จาก WebSocket</span>
+    <!-- Range controls -->
+    <span class="muted" style="margin-left:8px">Amp</span>
+    <input id="ampMin" class="mini" type="number" step="0.1" value="0"  title="Amp Min">
+    <input id="ampMax" class="mini" type="number" step="0.1" value="15" title="Amp Max">
+    <span class="muted" style="margin-left:6px">Flow</span>
+    <input id="flowMin" class="mini" type="number" step="1" value="0"   title="Flow Min">
+    <input id="flowMax" class="mini" type="number" step="1" value="220" title="Flow Max">
+    <button class="btn" id="applyRange">Apply</button>
   </div>
 
   <div id="grid" class="grid"></div>
-  <footer><span class="muted">แสดงเกจ Amp (A) และ Flow (L/min) ของปั๊มทุกตัว • โหมดอ่านค่า ไม่หมุน 3D</span></footer>
+  <footer><span class="muted">เกจอะนาล็อกมี “เข็ม” หมุน 270° (−135° ถึง +135°) • ตั้งค่า Min/Max ได้จากแถบด้านบน</span></footer>
 
   <script type="module">
-    /* ---------- WS resolver (config.json -> ?ws -> localStorage) ---------- */
+    /* ---------- WS resolver ---------- */
     async function resolveWS(){
       const params = new URLSearchParams(location.search);
       let url = params.get('ws') || localStorage.getItem('wsEndpoint');
@@ -108,7 +124,7 @@
       return url;
     }
 
-    /* ---------- Pump layout mirror (match 3D page) ---------- */
+    /* ---------- Layout mirror (ตามหน้า 3D) ---------- */
     const PLAN_ROOMS=[
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}],
       [{x:-14,z:5,w:18,d:12},{x:2,z:5,w:14,d:12},{x:16,z:5,w:14,d:12},{x:-6,z:-6,w:16,d:10},{x:12,z:-6,w:18,d:10}]
@@ -129,7 +145,7 @@
       FLOORS.push(floor);
     });
 
-    /* ---------- UI ---------- */
+    /* ---------- UI basic ---------- */
     const grid = document.getElementById('grid');
     const liveBadge = document.getElementById('liveBadge');
     const fFloor = document.getElementById('fFloor');
@@ -150,8 +166,48 @@
     fText .addEventListener('input', render);
     rebuildRoomFilter();
 
+    /* ---------- Gauge utilities (SVG) ---------- */
+    const GAUGE_CFG = {
+      amp:{min:0,max:15,color:'#93c5fd'},
+      flow:{min:0,max:220,color:'#22c55e'}
+    };
+    const startDeg = -135, endDeg = 135, sweep = endDeg - startDeg;
+    const toRad = d => (d*Math.PI/180);
+    function polar(cx,cy,r,deg){
+      const a=toRad(deg);
+      return {x:cx + r*Math.cos(a), y:cy + r*Math.sin(a)};
+    }
+    function arcPath(r, a0, a1){
+      const p0 = polar(55,55,r,a0), p1 = polar(55,55,r,a1);
+      const large = (a1-a0) > 180 ? 1 : 0;
+      return `M ${p0.x.toFixed(3)} ${p0.y.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${p1.x.toFixed(3)} ${p1.y.toFixed(3)}`;
+    }
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+    function angleFor(kind, val){
+      const {min,max} = GAUGE_CFG[kind];
+      const p = (clamp(val,min,max) - min) / Math.max(1e-9,(max-min));
+      return startDeg + sweep * p;
+    }
+
+    function gaugeMarkup(kind, id){
+      const clr = GAUGE_CFG[kind].color;
+      const base = kind==='amp' ? 'ga' : 'gf';
+      return `
+      <div class="gaugeA" style="--clr:${clr}">
+        <svg viewBox="0 0 110 110" aria-hidden="true">
+          <path class="bg" d="${arcPath(40,startDeg,endDeg)}"></path>
+          <path class="fg" id="${base}-arc-${id}" d="${arcPath(40,startDeg,startDeg)}"></path>
+          <line class="needle" id="${base}-ndl-${id}" x1="55" y1="55" x2="55" y2="18"></line>
+          <circle class="hub" cx="55" cy="55" r="3"></circle>
+        </svg>
+        <div class="center">
+          <div class="v" id="${base==='ga'?'gav':'gfv'}-${id}">0</div>
+          <div class="u">${kind==='amp'?'Amp':'Flow'}</div>
+        </div>
+      </div>`;
+    }
+
     function cardHTML(id){
-      // id format F1-R1-P1
       const [floor, room] = id.split('-').slice(0,2);
       return `<div class="card" id="card-${id}">
         <div class="head">
@@ -162,18 +218,8 @@
           <span class="status" id="st-${id}">—</span>
         </div>
         <div class="gwrap">
-          <div>
-            <div class="gauge" id="ga-${id}" style="--p:0; --clr:#93c5fd;">
-              <div class="v" id="gav-${id}">0.0</div>
-              <div class="u">Amp</div>
-            </div>
-          </div>
-          <div>
-            <div class="gauge" id="gf-${id}" style="--p:0; --clr:#22c55e;">
-              <div class="v" id="gfv-${id}">0</div>
-              <div class="u">Flow</div>
-            </div>
-          </div>
+          <div>${gaugeMarkup('amp', id)}</div>
+          <div>${gaugeMarkup('flow', id)}</div>
           <div class="kpi">
             <div class="kv"><div class="k">สถานะ</div><div class="v" id="kv-run-${id}">—</div></div>
             <div class="kv"><div class="k">สุขภาพ</div><div class="v" id="kv-hlth-${id}">—</div></div>
@@ -195,13 +241,11 @@
         return true;
       });
       grid.innerHTML = ids.map(cardHTML).join('');
-      // Repaint with current state
       ids.forEach(id=> applyStateToCard(id, state[id]||null));
     }
 
     /* ---------- State & paint ---------- */
-    const AMP_MAX = 15, FLOW_MAX = 220;
-    const state = {}; // id -> {enabled, amp, flow, health}
+    const state = {}; // id -> {enabled, amp, flow}
     function classify(s){
       if(!s || !s.enabled) return 'OFF';
       const overCurr = (s.amp>10);
@@ -210,10 +254,14 @@
       if(overCurr || s.amp>8 || s.flow<100) return 'WARN';
       return 'OK';
     }
-    function pct(v,max){ return Math.max(0, Math.min(100, (v/max)*100)); }
-    function setGauge(el, val, max){
-      if(!el) return;
-      el.style.setProperty('--p', pct(val,max).toFixed(2));
+    function setAnalogGauge(kind, id, val){
+      const base = (kind==='amp')? 'ga':'gf';
+      const ndl = document.getElementById(`${base}-ndl-${id}`);
+      const arc = document.getElementById(`${base}-arc-${id}`);
+      if(!ndl || !arc) return;
+      const ang = angleFor(kind, val);
+      ndl.style.transform = `rotate(${ang}deg)`;
+      arc.setAttribute('d', arcPath(40, startDeg, ang));
     }
     function applyStateToCard(id, s){
       const card = document.getElementById('card-'+id);
@@ -223,15 +271,16 @@
       const hl  = document.getElementById('kv-hlth-'+id);
       const ka  = document.getElementById('kv-amp-'+id);
       const kf  = document.getElementById('kv-flow-'+id);
-      const ga  = document.getElementById('ga-'+id);
-      const gf  = document.getElementById('gf-'+id);
       const gav = document.getElementById('gav-'+id);
       const gfv = document.getElementById('gfv-'+id);
 
       if(!s){
         st.textContent='—'; st.className='status';
         run.textContent='—'; hl.textContent='—'; ka.textContent='0.0'; kf.textContent='0';
-        setGauge(ga,0,AMP_MAX); setGauge(gf,0,FLOW_MAX); gav.textContent='0.0'; gfv.textContent='0';
+        setAnalogGauge('amp', id, GAUGE_CFG.amp.min);
+        setAnalogGauge('flow',id, GAUGE_CFG.flow.min);
+        if(gav) gav.textContent='0.0';
+        if(gfv) gfv.textContent='0';
         card.classList.remove('crit-ok','crit-warn','crit-bad');
         return;
       }
@@ -240,10 +289,11 @@
       run.textContent = s.enabled? 'RUN':'STOP';
       ka.textContent = (s.amp||0).toFixed(1);
       kf.textContent = Math.round(s.flow||0);
-      gav.textContent= (s.amp||0).toFixed(1);
-      gfv.textContent= Math.round(s.flow||0);
-      setGauge(ga, s.amp||0, AMP_MAX);
-      setGauge(gf, s.flow||0, FLOW_MAX);
+      if(gav) gav.textContent= (s.amp||0).toFixed(1);
+      if(gfv) gfv.textContent= Math.round(s.flow||0);
+      setAnalogGauge('amp', id, s.amp||0);
+      setAnalogGauge('flow',id, s.flow||0);
+
       const sev = classify(s);
       hl.textContent = (sev==='OK'?'ปกติ':sev==='WARN'?'เตือน':sev==='BAD'?'ผิดปกติ':'ปิด');
       card.classList.remove('crit-ok','crit-warn','crit-bad');
@@ -253,17 +303,11 @@
     }
 
     /* ---------- Back & Logout ---------- */
-    const btnBack = document.getElementById('btnBack');
-    btnBack.addEventListener('click', ()=>{
-      // Prefer going back if we came from the 3D page in the same origin
+    document.getElementById('btnBack').addEventListener('click', ()=>{
       const ref = document.referrer;
       try{
-        if(ref && new URL(ref).origin === location.origin){
-          history.back();
-          return;
-        }
+        if(ref && new URL(ref).origin === location.origin){ history.back(); return; }
       }catch(e){}
-      // Fallback: go to remembered home3D or index.html, preserving ?ws=
       const q = new URLSearchParams(location.search);
       const ws = q.get('ws') || localStorage.getItem('wsEndpoint');
       const home = localStorage.getItem('home3D') || './index.html';
@@ -271,18 +315,30 @@
       if(ws) url.searchParams.set('ws', ws);
       location.href = url.pathname + url.search;
     });
-
     document.getElementById('btnLogout').addEventListener('click', ()=>{
       try{ localStorage.removeItem('sessionV1'); }catch(e){}
       const next = encodeURIComponent('./pumps_gauges.html');
       location.href = './login.html?next=' + next;
     });
 
+    /* ---------- Range controls (min/max) ---------- */
+    const ampMin = document.getElementById('ampMin');
+    const ampMax = document.getElementById('ampMax');
+    const flowMin= document.getElementById('flowMin');
+    const flowMax= document.getElementById('flowMax');
+    document.getElementById('applyRange').addEventListener('click', ()=>{
+      GAUGE_CFG.amp.min  = Number(ampMin.value)||0;
+      GAUGE_CFG.amp.max  = Number(ampMax.value)||15;
+      GAUGE_CFG.flow.min = Number(flowMin.value)||0;
+      GAUGE_CFG.flow.max = Number(flowMax.value)||220;
+      // repaint all visible cards with current state
+      PUMP_IDS.forEach(id=> applyStateToCard(id, state[id]||null));
+    });
+
     /* ---------- WS live ---------- */
     const WS_URL = await resolveWS();
     console.log('WS endpoint:', WS_URL);
     let ws, wsTimer, backoff=2000;
-
     function setLive(state,text){
       liveBadge.classList.remove('ok','bad');
       if(state==='ok'){ liveBadge.classList.add('ok'); liveBadge.textContent='LIVE: connected'; }
@@ -292,7 +348,7 @@
     function applyUpdate(msg){
       if(Array.isArray(msg)){ msg.forEach(applyUpdate); return; }
       const m = msg&&typeof msg==='object'?msg:null; if(!m||typeof m.id!=='string') return;
-      if(!(m.id in state)) state[m.id] = {enabled:true, amp:0, flow:0, health:'OK'};
+      if(!(m.id in state)) state[m.id] = {enabled:true, amp:0, flow:0};
       if(typeof m.enabled==='boolean') state[m.id].enabled = m.enabled;
       if(typeof m.amp==='number') state[m.id].amp = m.amp;
       if(typeof m.flow==='number') state[m.id].flow = m.flow;
@@ -306,7 +362,8 @@
       ws.onclose =()=>{ setLive('bad'); clearTimeout(wsTimer); wsTimer=setTimeout(connectWS, backoff); backoff=Math.min(backoff*1.8, 20000); };
       ws.onerror =(e)=> console.warn('WS error', e);
     }
-    connectWS(); setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
+    connectWS();
+    setInterval(()=>{ if(ws && ws.readyState===1) setLive('ok'); else setLive('bad'); },1000);
 
     // Initial render
     render();
